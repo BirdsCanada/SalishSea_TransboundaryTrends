@@ -1,0 +1,27 @@
+---
+title: "DataClean"
+format: html
+editor: visual
+---
+
+## 1. BCCWS
+
+### 1.1 Data Clean
+
+Cleaning the BCCWS is done with several step, which will be executed here using a single function.
+
+## 2. PSSS
+
+### 2.1 Data Format
+
+The PSSS is in a different format than the BCCCW, and therefore requires a separate data processing step to wrangle the data into the 169 core fields of the Bird Monitoring Data Exchange ([BMDE](https://naturecounts.ca/nc/default/nc_bmde.jsp)). The following function will do this step for you.
+
+```{r PSSS-BMDE, warning=FALSE}  
+
+source("PSSS_BMDE.R")  
+
+#Write to Data folder in working directory 
+write.csv(PSSS, "Data/PSSS.csv") 
+#read from Data folder in working directory 
+PSSS<-read.csv("Data/PSSS.csv")}
+```

@@ -1,0 +1,110 @@
+---
+title: "DataAccess"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## 1. British Columbia Coastal Waterbird Survey (BCCWS)
+
+### 1.1 Protocol
+
+BCCWS data collection protocol can be found online [here](https://www.birdscanada.org/bird-science/british-columbia-coastal-waterbird-survey/bccws_resources).
+
+In short, surveys have been conducted by volunteers using a standardized protocol and data collection [sheets](https://birdscanada.b-cdn.net/wp-content/uploads/2021/02/BCCWS_Datasheet.pdf). Shore-based counts are completed monthly on or near the second Sunday of each month from September to April. Surveys are complete within approximately 2 hours of high tide to maximize the opportunity for close observation. All waterbirds observed to a distance of 1 km from the high tide line are counted, except those that fly through without stopping. In the case of larger flocks, numbers are estimated by counting individuals and species in groups and scaling up (see [Training Module for Volunteers](https://birdscanada.b-cdn.net/wp-content/uploads/2020/02/BCCWS-Training-Module.pdf)). Data are entered through a customized online data entry system available on the Birds Canada website, [NatureCounts](https://birdscanada.github.io/www.birdscanada.%20org/birdmon/default/main.jsp). Observations are processed using the eBird data filters to flag rare species and high counts during observer data entry, and records are manually reviewed for form accuracy.
+
+The data are collected using a standardize protocol, by trained citizen-science volunteers. This standardization is a strength of this data set for making inferences about coastal waterbirds in the Canadian Salish Sea.
+
+### 1.2 Data Collected
+
+Observation counts of waterbirds and raptor seen during a survey are compiled at the scale of the route (i.e., the maximum count per species) on each monthly survey. These observations are divided into inland, near shore (shoreline to 500m out from high tide), off shore (beyond 500m), and total counts. The dataset is not zero-filled.
+
+Auxiliary Data Collected:
+
+-   Observer information: observer ID
+
+-   Survey information: time observation started, time observation ended, duration in hours
+
+-   Survey condition: precipitation, % cloud, sea condition, tide state, tide movement, visibility, survey equipment, human activity (all categorical)
+
+### 1.2 Data Access
+
+Data can be freely accessed through the NatureCounts data [download](https://naturecounts.ca/nc/default/searchquery.jsp) portal or directly through the naturecounts R package. The BCCWS is Access Level 4 dataset, meaning a data request form must be submitted. This is not meant to be a barrier, rather a means of keeping track of who is using the data and for what purposes.
+
+Data are formatted using a standardized schema that is a core standard of the [Avian Knowledge Network](https://avianknowledge.net/) and which feeds into [GBIF](https://www.gbif.org/). This format is called the Bird Monitoring Data Exchange ([BMDE](https://naturecounts.ca/nc/default/nc_bmde.jsp)), which includes 169 core fields for capturing all metric and descriptors associated with bird observations.
+
+```{r BCCWS Data Download}
+
+install.packages("remotes")
+remotes::install_github("BirdsCanada/naturecounts")
+
+library(naturecounts) 
+library(tidyverse)
+
+#sample code to access BCCWS data from NatureCounts
+BCCWS<-nc_data_dl(collection="BCCWS", username = "YOUR USERNAME", info="MY REASON", fields_set = "core", request_id = 12345)
+
+#Write to Data folder in working directory
+write.csv(BCCWS, "Data/BCCWS.csv")
+#read from Data folder in working directory
+BCCWS<-read.csv("Data/BCCWS.csv")
+ 
+```
+
+## 2. Puget Sound Seabird Survey (PSSS)
+
+### 2.1 Protocol
+
+PSSS data collection protocol can be found online [here](https://seattleaudubon.org/wp-content/uploads/2021/01/PSSS_Protocol_2014-15.pdf).
+
+In short, surveys are conducted by volunteers using a standardized protocol and data collection [sheets](https://seattleaudubon.org/wp-content/uploads/2021/09/PSSS-Datasheet.pdf). Shore-based counts are completed monthly on the first Saturday of each month from October to April. Surveys are completed within approximately 2 hours of high tide to maximize the opportunity for close observation. Surveys are a minimum of 15 minutes and a maximum of 30 minutes per site. All waterbirds observed to a distance of 300 m from the high tide line are counted, except those that fly through without stopping. For large flocks, surveys estimate both the min, max, and best estimate. Surveyors are required to attend a short training session with Seattle Audubon staff prior to their first survey. Data are entered through a customized online data entry system, available [here](http://seabirdsurvey.org/seabirdsurvey/).
+
+The data are collected using a standardized protocol, by trained citizen-science volunteers. This standardization is a strength of this dataset for making inferences about coastal waterbirds in the US Salish Sea.
+
+### 2.2 Data Collected
+
+Total observation counts of each waterbird species seen during a point survey are recorded, including bearing, distance, and sex ratio. Raptors are recorded separately from the other waterbird species. The dataset is not zero-filled.
+
+Auxiliary Data Collected:
+
+-   Observer information: observer name
+
+-   Survey information: time observation started, time observation ended
+
+-   Survey condition: weather, precipitation, sea state, tide movement, visibility, human activity, raptor activity (all categorical)
+
+### 2.3 Data Access
+
+At the time of writing, the data were only accessible by reaching out to the Seattle Audubon directly and filling out a data share agreement. The data will be sent to you as a .xslx flat file which will be suitable for Data formatting and processing. Ensure that you receive all the data for the specified temporal period you are interested in analyzing. This will be needed to allow for proper zero-filling. Place the data in a `Data` folder in your working directory.
+
+```{r working directory}
+getwd()
+```
+
+Now you can import the data using the file name.
+
+```{r PSSS, warning=FALSE}
+
+library(readxl)
+
+#sample code to access PSSS data from your working Data directory
+PSSS <- read_excel("Data/10.13.2022 PSSS data.xlsx")
+
+```
+
+### 2.4 Data Format
+
+The PSSS is in a different format than the BCCCW, and therefore requires a separate data processing step to wrangle the data into the 169 core fields of the Bird Monitoring Data Exchange ([BMDE](https://naturecounts.ca/nc/default/nc_bmde.jsp)). The following function will do this step for you.
+
+```{r PSSS-BMDE, warning=FALSE}
+
+source("PSSS_BMDE.R")
+
+#Write to Data folder in working directory
+write.csv(PSSS, "Data/PSSS.csv")
+#read from Data folder in working directory
+PSSS<-read.csv("Data/PSSS.csv")
+ 
+
+```
