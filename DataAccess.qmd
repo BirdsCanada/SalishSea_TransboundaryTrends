@@ -44,9 +44,12 @@ library(tidyverse)
 
 #sample code to access BCCWS data from NatureCounts
 BCCWS<-nc_data_dl(collection="BCCWS", username = "YOUR USERNAME", info="MY REASON", fields_set = "core", request_id = 12345)
+#this step should not be needed but it appears that there are more than 169 fields being included with the download. 
+BMDE_col<-unique(BMDE$local_name) 
+BCCWS<-BCCWS[BMDE_col]
 
 #Write to Data folder in working directory
-write.csv(BCCWS, "Data/BCCWS.csv")
+write.csv(BCCWS, "Data/BCCWS.csv", row.names = FALSE)
 #read from Data folder in working directory
 BCCWS<-read.csv("Data/BCCWS.csv")
  
@@ -102,7 +105,7 @@ The PSSS is in a different format than the BCCCW, and therefore requires a separ
 source("PSSS_BMDE.R")
 
 #Write to Data folder in working directory
-write.csv(PSSS, "Data/PSSS.csv")
+write.csv(PSSS, "Data/PSSS.csv", row.names = FALSE)
 #read from Data folder in working directory
 PSSS<-read.csv("Data/PSSS.csv")
  
