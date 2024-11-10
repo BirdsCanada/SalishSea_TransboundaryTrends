@@ -3,8 +3,13 @@
 library(readxl)
 library(writexl)
 library(lubridate)
+library(tidyverse)
+library(naturecounts)
 
-sp.tb<-read_excel("Data/survey.window.new.xlsx") #list of target species
+plot.dir <- paste("./Plots/", sep = "")
+dir.create(plot.dir, showWarnings=FALSE, recursive=TRUE)
+
+sp.tb<-read.csv("Data/survey.window.new2.csv") #list of target species
 
 BCCWS<-read.csv("Data/BCCWS.csv")
 PSSS<-read.csv("Data/PSSS.csv")
@@ -15,20 +20,20 @@ dat<-dat %>% format_dates()
 #create events matrix
 events<-dat %>% select(SurveyAreaIdentifier, YearCollected, MonthCollected, DayCollected, doy) %>% distinct()
 
-#filter species data by list of tagets species
+#filter species data by list of targets species
 sp.list<-unique(sp.tb$species_code)
+sp.list <- sort(unlist(sp.list))
 dat<-dat %>% select(SurveyAreaIdentifier, YearCollected, MonthCollected, DayCollected, doy, CommonName, SpeciesCode, ObservationCount)
 dat<-dat %>% filter(SpeciesCode %in% sp.list)
+dat<-dat %>% filter(!is.na(SpeciesCode))
 
 #Create output table for results
-##NOT COMPLETE
-sp.data <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 4, byrow = FALSE,
-                                dimnames = NULL))
-names(sp.data) <- c("SurveyAreaIdentifier", "species", "doy", "mean_Obs")  
+out.plot<-NULL
 
-for(k in 1:length(species.list)) {
+
+for(k in 1:length(sp.list)) {
   
-  k<-1 #for testing
+  #k<-2 #for testing
   sp.data<-NULL
   sp.data <- dat %>% filter(SpeciesCode == sp.list[k]) %>% distinct(SurveyAreaIdentifier,  YearCollected, MonthCollected, DayCollected, .keep_all = TRUE)
   species <- sp.list[k]
@@ -38,22 +43,29 @@ for(k in 1:length(species.list)) {
     mutate(ObservationCount = replace(ObservationCount, is.na(ObservationCount), 0))
   
   test<-sp.data %>% group_by(YearCollected, MonthCollected) %>% summarise(MeanCount=mean(ObservationCount))
-  test$Month<-month(test$MonthCollected, label = TRUE, abbr=FALSE)
-  test<-test %>% filter(MonthCollected %in% c(10, 11, 12, 1, 2, 3, 4))
+  test<-test %>% filter(MonthCollected %in% c(1, 2, 3, 4, 10, 11, 12))
+  test$MonthCollected<-factor(test$MonthCollected, levels=c(10, 11, 12, 1, 2, 3, 4), 
+                              labels=c("Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr"))
   
-  #reorder the months ##HERE
-  data <- data.frame(
-    category = c(1, 2, 3, 4, 10, 11, 12),
-    value = c(10, 15, 20, 25, 30, 35, 40, 45)
-  )
   
-  ggplot(test, aes(x=MonthCollected, y=MeanCount))+
+  out.plot[[k]]<-ggplot(test, aes(x=MonthCollected, y=MeanCount))+
     geom_point()+
+    #geom_smooth(method="loess")+
     xlab("Month")+
     ylab("Mean Count")+
     ggtitle(sp.list[k])+
-    scale_x_continuous(breaks=scales::breaks_width(width=1))+
     theme_classic()
-    
   
-} #end loop
+  } #end sp loop
+
+pdf(paste(plot.dir, "Abundance.pdf", sep = ""),
+    height = 10, width = 8, paper = "letter")
+
+#    print(out.plot0)
+for(r in 1:length(out.plot)){
+  try(print(out.plot[[r]]), silent = TRUE)
+}
+
+while(!is.null(dev.list())) dev.off()
+
+

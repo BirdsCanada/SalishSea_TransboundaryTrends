@@ -6,7 +6,9 @@
 #     ObservationCount4 (Offshore)
 #     ObservationCount5 (Unknown Habitat - might include flyovers? Protocol says not to count fly overs)
 
-BCCWS$ObservationCount<-as.numeric(BCCWS$ObservationCount)
+BCCWS$ObservationCount<-as.numeric(BCCWS$ObservationCount3)  ##WILLL WANT TO KEEP JUST THE NEARSHORE DATA TO MAKE THIS COMPARABLE TO PSSS
+
+#will want to include DURATION in hours because this is higly variable and will want to use as a offset or covariate .
 
 bccws.manip <- function(Y1, Y2, write.out) {
   
@@ -14,9 +16,8 @@ bccws.manip <- function(Y1, Y2, write.out) {
   # READ IN DATA #
   ################ 
   
-  ##WILLL WANT TO KEEP JUST THE NEARSHORE DATA
-  
-  in.data <- read.csv("in.data.BCCWS.csv") # reads in back-up copy of database 
+ 
+  in.data <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database 
   
   #Thayer's Gull missing SpeciesCode. Need to assign here species_id == 5190
   in.data$SpeciesCode<-as.character(in.data$SpeciesCode)
