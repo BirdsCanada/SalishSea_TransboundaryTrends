@@ -20,10 +20,10 @@ dat<-dat %>% format_dates()
 #create events matrix
 events<-dat %>% select(SurveyAreaIdentifier, YearCollected, MonthCollected, DayCollected, doy) %>% distinct()
 
-#filter species data by list of targets species
-sp.list<-unique(sp.tb$species_code)
-sp.list <- sort(unlist(sp.list))
-dat<-dat %>% select(SurveyAreaIdentifier, YearCollected, MonthCollected, DayCollected, doy, CommonName, SpeciesCode, ObservationCount)
+#filter species data by list of targets species, these are the 80 sp that the program shares
+sp.list<-c("COGO","RNGR","SBIG","COME","PALO","BAEA","BUFF","SUSC","DCCO","WWSC","GWGU","MAMU","AMWI","HOGR","HARD","PECO","MALL","COLO","BAGO","LTDU","RBME","HERG","GBHE","RTLO","WEGR","PIGU","GADW","GWTE","RBGU","LESC","BLSC","NOPI","HOME","BRAN","CACG","PEFA","NSHO","MERL","RNDU","GRSC","NOHA","SNGO","RHAU","PBGR","HEEG","EUWI","CANV","OSPR","BRAC","CAGU","COMU","CAGO","BOGU","WEGU","COHA","SSHA","EAGR","ANMU","GWFG","AMCO","GLGU","CITE","TUSW","RUDU","REDH","CATE","COTE","KIEI","YBLO","RNPH","CAAU","POJA","SOSH","NOFU","REPH","CLGR","BRPE","SAGU","AWPE","IVGU")
+#sp.list <- sort(unlist(sp.list))
+dat<-dat %>% select(SurveyAreaIdentifier, YearCollected, MonthCollected, DayCollected, doy, CommonName, SpeciesCode, species_id, ObservationCount)
 dat<-dat %>% filter(SpeciesCode %in% sp.list)
 dat<-dat %>% filter(!is.na(SpeciesCode))
 
