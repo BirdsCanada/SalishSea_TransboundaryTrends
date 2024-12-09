@@ -8,9 +8,45 @@ editor: visual
 
 ### 1.1 Data Clean
 
-Cleaning the BCCWS is done with several step, which will be executed here using a single function.
+Cleaning the BCCWS is done in several step, which will be executed here using a single function. All that is needed manually is the start and end years of the analysis window.
+
+```{r}
+
+#specify start and end year
+Y1 = 2008
+Y2 = 2022
+
+#Run the BCCWS cleaning scripts. 
+#Your output will include the data you need for an analysis of trends. 
+source("BCCWSClean.R")
+
+```
+
+In your environment you will have the following objects:
+
+`in.BCCWS`: the clean data matrix
+
+`events.BCCWS`: the events matrix used for zero-filling your data matrix
 
 ## 2. PSSS
+
+### 2.1 Data Clean
+
+A similar function as above is used to clean the PSSS data.
+
+```{r}
+
+#specify start and end year
+Y1 = 2008
+Y2 = 2022
+
+#Run the BCCWS cleaning scripts. 
+#Your output will include the data you need for an analysis of trends. 
+source("PSSSClean.R")
+
+
+
+```
 
 There are 80 species that are monitored by both the BCCWS and PSSS:
 
