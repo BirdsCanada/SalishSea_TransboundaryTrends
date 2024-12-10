@@ -6,6 +6,16 @@ editor_options:
   chunk_output_type: console
 ---
 
+# Data Access and Cleaning
+
+Before you get started, run the `setup.R` script to install and load the necessary packages and functions for this analysis.
+
+```{r setup, include=FALSE}
+
+source("00_Setup.R")
+
+```
+
 ## 1. British Columbia Coastal Waterbird Survey (BCCWS)
 
 ### 1.1 Protocol
@@ -36,14 +46,9 @@ Data are formatted using a standardized schema that is a core standard of the [A
 
 ```{r BCCWS Data Download}
 
-install.packages("remotes")
-remotes::install_github("BirdsCanada/naturecounts")
-
-library(naturecounts) 
-library(tidyverse)
-
 #sample code to access BCCWS data from NatureCounts
 BCCWS<-nc_data_dl(collection="BCCWS", username = "YOUR USERNAME", info="MY REASON", fields_set = "core", request_id = 12345)
+
 #this step should not be needed but it appears that there are more than 169 fields being included with the download. 
 BMDE_col<-unique(BMDE$local_name) 
 BCCWS<-BCCWS[BMDE_col]
@@ -102,12 +107,113 @@ The PSSS is in a different format than the BCCCW, and therefore requires a separ
 
 ```{r PSSS-BMDE, warning=FALSE}
 
-source("PSSS_BMDE.R")
+source("PSSSBMDE.R") #warning about "missing pieces" can be ignored
 
 #Write to Data folder in working directory
 write.csv(PSSS, "Data/PSSS.csv", row.names = FALSE)
 #read from Data folder in working directory
 PSSS<-read.csv("Data/PSSS.csv")
  
+```
+
+## 3. Combine Datasets
+
+```{r}
+
+#Manually Specify the start and end year of the analysis
+Y1 = 2008
+Y2 = 2022
+
+#Run the BCCWS cleaning scripts. 
+#Your output will include the data you need for an analysis of trends. 
+source("BCCWSClean.R")
+
+#Run the PSSS cleaning scripts.
+#Your output will include the data you need for an analysis of trends.
+source("PSSSClean.R")
+
+#Combine and write the data to you Data folder
+in.data<-rbind(in.BCCWS, in.PSSS)
+events<-rbind(event.BCCWS, event.PSSS)
+
+# To write to local Data directory
+write.csv(in.data, "Data/in.data.csv", row.names = FALSE)
+write.csv(events, "Data/events.csv", row.names = FALSE)
+
 
 ```
+
+## 4. Data Exploration
+
+```{r} 
+
+# To read from local Data directory
+in.data<-read.csv("Data/in.data.csv")
+events<-read.csv("Data/events.csv")
+
+#Determine which SpeciesCode each ProjectCode share in the full dataset
+sp.bsss<-in.data %>% filter(ProjectCode == "BCCWS") %>% dplyr::select(SpeciesCode) %>% distinct()
+sp.psss<-in.data %>% filter(ProjectCode == "PSSS") %>% dplyr::select(SpeciesCode) %>% distinct()
+
+common.species<-intersect(sp.bsss$SpeciesCode, sp.psss$SpeciesCode) #There are 74 species in common between BCCWS and PSSS
+
+#filter the full dataset to only include the common species
+in.data<-in.data[in.data$SpeciesCode %in% common.species,]
+
+#Plot the data for visual inspection
+
+#Observation counts of each waterbird species seen during a survey are compiled at the scale of the route (i.e., the maximum count per species) on each monthly survey.
+RouteMeanMonth<-in.data %>% group_by(ProjectCode, SurveyAreaIdentifier, SpeciesCode, MonthCollected) %>% summarise(Count = mean(ObservationCount))
+
+#Make a ggplot of summary data
+#First, reorder months in plot so that they are arrenged from 10:12, 1:4. 
+RouteMeanMonth$MonthCollected<-factor(RouteMeanMonth$MonthCollected, levels = c("10", "11", "12", "1", "2", "3", "4"))
+
+ggplot(RouteMeanMonth, aes(x=MonthCollected, y=Count, col=ProjectCode)) + geom_point() +  facet_wrap(~SpeciesCode, scales = "free_y") + theme_minimal()
+
+#Inspect the DurationInHours variable for outliers, plot in two seperate plots for each ProjectCode
+ggplot(in.data, aes(x=DurationInHours, fill=ProjectCode)) + geom_histogram() + facet_wrap(~ProjectCode)
+#Remove zeros (and point counts <3 min) and any DurationInHours greater than 10 as this seem unrealistic
+in.data<-in.data[in.data$DurationInHours < 3 | in.data$DurationInHours > 10,]
+
+
+#Some species are detected infrequently. We will want to set a minimum data requirement for species to be included in the analysis.
+#Species that have a mean abundance per year < 10, and species that were detected in fewer than one-half of the survey years will be removed from the analysis. 
+#This is a common practice in the analysis of long-term monitoring data to ensure that species with low detection rates are not driving trends.
+#First, calculate the mean abundance per year for each species
+SpeciesMean<-in.data %>% group_by(SpeciesCode, ProjectCode, YearCollected) %>% summarise(MeanYrAbundance = mean(ObservationCount))%>% group_by(SpeciesCode, ProjectCode) %>% summarise(MeanAbundance = mean(MeanYrAbundance))
+#Then, we will calculate the number of years each species was detected in
+SpeciesYears<-in.data %>% group_by(SpeciesCode, ProjectCode) %>% summarise(NumYears = length(unique(YearCollected)))
+#Merge the two datasets
+SpeciesData<-merge(SpeciesMean, SpeciesYears, by = c("SpeciesCode", "ProjectCode"))
+#Filter the data to only include species that meet the minimum data requirements
+SpeciesData<-SpeciesData[SpeciesData$MeanAbundance >= 10 & SpeciesData$NumYears >= (Y2-Y1)/2,]
+SpeciesData<-SpeciesData %>% dplyr::select(SpeciesCode, ProjectCode)
+#filter the full dataset by two columns in the SpeciesData dataset
+in.data<-in.data[in.data$SpeciesCode %in% SpeciesData$SpeciesCode & in.data$ProjectCode %in% SpeciesData$ProjectCode,]
+
+#Now recreate the gglot to summarize the data
+RouteMeanMonth<-in.data %>% group_by(ProjectCode, SurveyAreaIdentifier, SpeciesCode, MonthCollected) %>% summarise(Count = mean(ObservationCount))
+#First, reorder months in plot so that they are arrenged from 10:12, 1:4. 
+RouteMeanMonth$MonthCollected<-factor(RounteMeanMonth$MonthCollected, levels = c("10", "11", "12", "1", "2", "3", "4"))
+ggplot(RounteMeanMonth, aes(x=MonthCollected, y=Count, col=ProjectCode)) + geom_point() +  facet_wrap(~SpeciesCode, scales = "free_y") + theme_minimal()
+
+#Plot to spatial distribution of each species per year
+#First, we need to join the decimal degree in latitude and longitude from the events data by SurveyAreaIdentifier. 
+latlong<-events %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude)) %>% 
+  dplyr::select(SurveyAreaIdentifier, DecimalLatitude, DecimalLongitude) %>% distinct() 
+
+data<-left_join(RouteMeanMonth, latlong, by = "SurveyAreaIdentifier")
+#create a spatail data frame using the coordinates
+#first remove missing lat and long
+data<-data %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude))
+data<-data %>% st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326)
+#now plot the coordinates on a map with a facet wrap for year
+```
+
+
+There are 80 species that are monitored by both the BCCWS and PSSS:
+
+"COGO" "RNGR" "SBIG" "COME" "PALO" "BAEA" "BUFF" "SUSC" "DCCO" "WWSC" "GWGU" "MAMU" "AMWI" "HOGR" "HARD" "PECO" "MALL" "COLO" "BAGO" "LTDU" "RBME" "HERG" "GBHE" "RTLO" "WEGR" "PIGU" "GADW" "GWTE" "RBGU" "LESC" "BLSC" "NOPI" "HOME" "BRAN" "CACG" "PEFA" "NSHO" "MERL" "RNDU" "GRSC" "NOHA" "SNGO" "RHAU" "PBGR" "HEEG" "EUWI" "CANV" "OSPR" "BRAC" "CAGU" "COMU" "CAGO" "BOGU" "WEGU" "COHA" "SSHA" "EAGR" "ANMU" "GWFG" "AMCO" "GLGU" "CITE" "TUSW" "RUDU" "REDH" "CATE" "COTE" "KIEI" "YBLO" "RNPH" "CAAU" "POJA" "SOSH" "NOFU" "REPH" "CLGR" "BRPE" "SAGU" "AWPE" "IVGU"
+
+NOTE: Not all of these will make the minimum data requirements.
