@@ -141,7 +141,6 @@ events<-rbind(event.BCCWS, event.PSSS)
 write.csv(in.data, "Data/in.data.csv", row.names = FALSE)
 write.csv(events, "Data/events.csv", row.names = FALSE)
 
-
 ```
 
 ## 4. Species Selection
@@ -159,22 +158,23 @@ in.data<-in.data[in.data$SpeciesCode %in% sp.list,]
 
 ```
 
-**Alternatively**, you can set minimum data requirement. Here we select species that are detected by both surveys with a mean abundance per year greater than 5, and species that were detected in more than half of the survey years. These number can be adjusted to suit the users needs.
+Here we select species that are detected by both surveys. In the analysis script we will set some minumum data requirements to remove species that do not have enough data to estimate trends.
 
 ```{r} 
 
-min.abundance <- 5
-min.years <- (Y2-Y1)/2
+#Determine which SpeciesCode each ProjectCode share in the full dataset
+sp.bsss<-in.data %>% filter(ProjectCode == "BCCWS") %>% dplyr::select(SpeciesCode) %>% distinct()
+sp.psss<-in.data %>% filter(ProjectCode == "PSSS") %>% dplyr::select(SpeciesCode) %>% distinct()
 
-#Run the Species Selection script
-source("SpeciesSelection.R")
-#The output will be a list of species that the programs have in common and a sp.list that meet the minimum data requirements. 
+common.species<-intersect(sp.bsss$SpeciesCode, sp.psss$SpeciesCode) 
+#There are 70 species in common between BCCWS and PSSS
 
-#Now filter the full dataset by the species list
-sp.data<-in.data[in.data$SpeciesCode %in% sp.list,]
+#filter the full dataset to only include the common species
+sp.data<-in.data[in.data$SpeciesCode %in% common.species,]
 
 #write to Data folder in working directory
 write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
+
 ```
 
 ## 5. Sampling Events Plot
@@ -211,7 +211,9 @@ ggplot(data = events_sf) +
 
 ## 6. Spatial Data    
 
-When deriving population trends, we are often interesting in doing this for specific geographic areas of interest. These could be management units or areas of conservation concern. Here we will create a spatial object that represents the Salish Sea and its subregions: Country and Bird Conservation Regions (BCR). Other shapefiles can be used to define the spatial extent of interest. 
+When deriving population trends, we are often interesting in doing this for specific geographic areas of interest. These could be management units or areas of conservation concern. Here we will create a spatial object that represents the Salish Sea and its subregions: Country. 
+
+Spatial units are also used in the iCAR model to account for spatial autocorrelation in the data and to estimate the spatial structure of the population trends.
 
 ```{r}
 
@@ -226,8 +228,12 @@ WA<- us[us$name=="Washington",]
 #Combine the two shapefiles
 salish_sea <- rbind(BC, WA)
 
-#Terrestrial and Marine BCR shapefiles can be found at the following link: https://www.birdscanada.org/bird-science/nabci-bird-conservation-regions
+events_sf <- st_transform(events_sf, st_crs(salish_sea))
 
-#Download and save to your Data directory in your working directory
+# Get the index of the nearest country for each event
+nearest_indices <- st_nearest_feature(events_sf, salish_sea)
+
+# Assign the country names based on the nearest indices
+events_sf$Province <- salish_sea$name[nearest_indices]
 
 ```

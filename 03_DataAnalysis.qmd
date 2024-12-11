@@ -4,23 +4,36 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# Data Analysis - Species Trends
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+## 3 International and National Assessments
 
-## Running Code
+A first assessment of coastal waterbird trends will be done for the full extent of the Salish Sea, and for each country separately. This is done on a species-by-species basis and is done without using a spatially explicit model to start. 
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
-```{r}
-1 + 1
-```
-
-You can add options to executable code like this
+### 3.1 International Assessment
 
 ```{r}
-#| echo: false
-2 * 2
-```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+#Load your saved species data 
+sp.data<-read.csv("Data/sp.data.csv")
+#Load your saved events data which is needed for zero-filling
+events<-read.csv("Data/events.csv")
+
+#Create a list of species
+sp.list<-unique(sp.data$SpeciesCode)
+
+#Create a data frame to store the results. 
+#This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
+site <- "SalishSea"
+source("OutputTables.R")
+
+#Select the minimum data requirements for the analysis. The once selected here are consistent with Ethier et al. (2020). Specifically, (i.e., species with > 85% zero counts across all routes and years, species that had a mean abundance per year < 10, and species that were detected in fewer than one-half of the survey years). Users may choose to adjust these parameters. 
+
+min.abundance <- 10
+min.years <- (Y2-Y1)/2
+zero.count<-0.85
+
+#Now we can initiate the analysis.  
+source("Analysis.R")
+
+```

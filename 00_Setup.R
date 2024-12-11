@@ -6,13 +6,23 @@ if(!dir.exists("Data")) dir.create("Data")
 if(!dir.exists("Output")) dir.create("Output")
 if(!dir.exists("Output/Plots")) dir.create("Output/Plots")
 
+#Assign directories
+out.dir <- "Output/"
+data.dir <- "Data/"
+plot.dir <- "Output/Plots/"
+
 #Load required libraries
 install.packages("remotes")
 remotes::install_github("BirdsCanada/naturecounts")
 
+install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE) 
+
+devtools::install_github("ropensci/rnaturalearthhires")
+
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
-                 exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, rnaturalearth, mapview)
+                 exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
+                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn)
 
 
 # Function to calculate duration in hours

@@ -14,11 +14,6 @@ in.PSSS <- subset(in.PSSS, YearCollected >= Y1 & YearCollected <= Y2)
 # filter data by months October to April
 in.PSSS <- subset(in.PSSS, MonthCollected %in% c(10:12, 1:4))
 
-# create date and day of year columns
-in.PSSS$date <- as.Date(paste(in.PSSS$YearCollected, in.PSSS$MonthCollected, 
-                               in.PSSS$DayCollected, sep = "-"))
-in.PSSS$doy <- as.numeric(format(in.PSSS$date, "%j"))
-
 # if duplicate records in data file; this keeps only one
 in.PSSS <- distinct(in.PSSS)
 
@@ -73,13 +68,15 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
   in.PSSS <- in.PSSS %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude))
   #Filter events to 45.06N to 50.64N latitude and 125.07W to 115.15W longitude
   in.PSSS <- in.PSSS %>% filter(DecimalLatitude >= 45.06 & DecimalLatitude <= 50.64 & DecimalLongitude >= -125.07 & DecimalLongitude <= -115.15)
-                           
+                        
 
   # create an events matrix for future zero filling
-  event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude) %>% distinct()
+  event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
+  # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
+  event.PSSS <- event.PSSS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
   
   # retain columns that are needed for the analysis
-  in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected, DurationInHours)
+  in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
 
   # write index.data to file
   write.csv(in.PSSS, "Data/PSSS.clean.csv")
