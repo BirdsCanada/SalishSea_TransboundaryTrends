@@ -77,6 +77,10 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   
   # remove rows with missing DurationInHours
   in.BCCWS <- in.BCCWS %>% filter(!is.na(DurationInHours))
+  
+  #Filter Duration in hours greater than 0.3 and less than 10
+  in.BCCWS<-in.BCCWS[in.BCCWS$DurationInHours > 0.3 & in.BCCWS$DurationInHours < 10,]
+  
   # removed NA ObservationCounts
   in.BCCWS <- in.BCCWS %>% filter(!is.na(ObservationCount))
 

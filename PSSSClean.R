@@ -54,6 +54,8 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
   
 #remove remaining negative DurationInHours
   in.PSSS <- in.PSSS %>% filter(DurationInHours >= 0)  
+#Filter Duration in hours greater than 0.3 and less than 10
+  in.PSSS<-in.PSSS[in.PSSS$DurationInHours > 0.3 & in.PSSS$DurationInHours < 10,]  
   
 # create a new column called wyear, which groups surveys by winter year
 # for example, January-April 2005 would be wyear 2004

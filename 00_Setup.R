@@ -12,7 +12,7 @@ remotes::install_github("BirdsCanada/naturecounts")
 
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
-                 exactextractr, readxl, reshape)
+                 exactextractr, readxl, reshape, ggmap, gridExtra)
 
 
 # Function to calculate duration in hours
