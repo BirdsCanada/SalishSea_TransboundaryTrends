@@ -1,4 +1,4 @@
-#To update the project versions, run the following command 
+#To update the project versions and dependancies, run the following command 
 #renv::snapshot()
 
 #Create data folder and output folders in working directory
@@ -12,7 +12,7 @@ remotes::install_github("BirdsCanada/naturecounts")
 
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
-                 exactextractr, readxl, reshape, ggmap, gridExtra)
+                 exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, rnaturalearth, mapview)
 
 
 # Function to calculate duration in hours

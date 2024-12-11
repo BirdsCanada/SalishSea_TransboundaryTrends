@@ -67,13 +67,19 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
 
   #Remove ObservationCounts that are NA
   in.PSSS <- in.PSSS %>% filter(!is.na(ObservationCount))
+  #Remove missing SurveyAreaIdentifiers
+  in.PSSS <- in.PSSS %>% filter(!is.na(SurveyAreaIdentifier))
+  #Remove missing DecimalLatitude or DecimalLongitude
+  in.PSSS <- in.PSSS %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude))
+  #Filter events to 45.06N to 50.64N latitude and 125.07W to 115.15W longitude
+  in.PSSS <- in.PSSS %>% filter(DecimalLatitude >= 45.06 & DecimalLatitude <= 50.64 & DecimalLongitude >= -125.07 & DecimalLongitude <= -115.15)
                            
 
   # create an events matrix for future zero filling
-  event.PSSS <- in.PSSS %>% dplyr::select(SurveyAreaIdentifier, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude) %>% distinct()
+  event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude) %>% distinct()
   
   # retain columns that are needed for the analysis
-  in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, RouteIdentifier, SpeciesCode, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected, DurationInHours)
+  in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected, DurationInHours)
 
   # write index.data to file
   write.csv(in.PSSS, "Data/PSSS.clean.csv")

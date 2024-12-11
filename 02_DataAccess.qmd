@@ -94,8 +94,6 @@ Now you can import the data using the file name.
 
 ```{r PSSS, warning=FALSE}
 
-library(readxl)
-
 #sample code to access PSSS data from your working Data directory
 PSSS <- read_excel("Data/10.13.2022 PSSS data.xlsx")
 
@@ -111,6 +109,7 @@ source("PSSSBMDE.R") #warning about "missing pieces" can be ignored
 
 #Write to Data folder in working directory
 write.csv(PSSS, "Data/PSSS.csv", row.names = FALSE)
+
 #read from Data folder in working directory
 PSSS<-read.csv("Data/PSSS.csv")
  
@@ -160,7 +159,7 @@ in.data<-in.data[in.data$SpeciesCode %in% sp.list,]
 
 ```
 
-Alternatively, you can set minimum data requirement. Here we select species that are detected by both surveys with a mean abundance per year greater than 5, and species that were detected in more than half of the survey years. These number can be adjusted to suit the users needs.
+**Alternatively**, you can set minimum data requirement. Here we select species that are detected by both surveys with a mean abundance per year greater than 5, and species that were detected in more than half of the survey years. These number can be adjusted to suit the users needs.
 
 ```{r} 
 
@@ -169,11 +168,66 @@ min.years <- (Y2-Y1)/2
 
 #Run the Species Selection script
 source("SpeciesSelection.R")
-
 #The output will be a list of species that the programs have in common and a sp.list that meet the minimum data requirements. 
 
 #Now filter the full dataset by the species list
-in.data<-in.data[in.data$SpeciesCode %in% sp.list,]
+sp.data<-in.data[in.data$SpeciesCode %in% sp.list,]
+
+#write to Data folder in working directory
+write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
+```
+
+## 5. Sampling Events Plot
+
+Now we will plot the distribution of sampling events over the extent of the Salish Sea. This will be facets by year (wyear) so that changes in sampling effort can be spatailly visualized. Each survey program will be given a different colout. 
+
+```{r}
+
+#Convert the data to a spatial object
+events_sf <- st_as_sf(events, coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326)
+
+ggplot(data = events_sf) +
+  # Select a basemap
+  annotation_map_tile(type = "cartolight", zoom = NULL, progress = "none") +
+  # Plot the points, color-coded by survey_year
+  geom_sf(aes(color = as.factor(wyear)), size = 1) +
+  # Facet by survey_year to create the multi-paneled map
+  facet_wrap(~ wyear) +
+  # Add a theme with a minimal design and change the font styles, to your preference
+  theme_minimal() +
+  #theme(legend.position = "bottom") +
+  # To make the points in the legend larger without affecting map points
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  #make the text on the x-axis vertical
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  # Define the title and axis names
+  labs(title = "Coastal Waterbird Survey Events in the Salish Sea",
+       x = "Longitude",
+       y = "Latitude")+
+  #Define the legend title
+  scale_color_discrete(name = "Winter Year")
 
 ```
 
+## 6. Spatial Data    
+
+When deriving population trends, we are often interesting in doing this for specific geographic areas of interest. These could be management units or areas of conservation concern. Here we will create a spatial object that represents the Salish Sea and its subregions: Country and Bird Conservation Regions (BCR). Other shapefiles can be used to define the spatial extent of interest. 
+
+```{r}
+
+#Get the British Columbia, Canada and Washington, US shapefiles from the naturalearth package. 
+
+canada <- ne_states(country = "canada", returnclass = "sf") 
+BC<- canada[canada$name=="British Columbia",]
+
+us<- ne_states(country = "united states of america", returnclass = "sf") 
+WA<- us[us$name=="Washington",]
+
+#Combine the two shapefiles
+salish_sea <- rbind(BC, WA)
+
+#Terrestrial and Marine BCR shapefiles can be found at the following link: https://www.birdscanada.org/bird-science/nabci-bird-conservation-regions
+
+#Download and save to your Data directory in your working directory
+
+```

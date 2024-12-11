@@ -47,3 +47,13 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+#Anything in the Data, Output, or Plot folders
+# Ignore backup folder
+/Data/
+/Output/
+/Plots/
+
+
+
+
