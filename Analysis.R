@@ -61,7 +61,8 @@ if(min.data==TRUE){
                                    dat$DayCollected, sep = "-"))
     dat$doy <- as.numeric(format(dat$date, "%j"))
     
-    #standardize year to max, prepare index variables 
+###Model without spatail effect on abundance    
+    #standardize year to max, prepare index variables
     #where i = grid cell, k = route, t = year, e = protocol_id
     dat <- dat %>% mutate(std_yr = wyear - Y2)
     #dat$ellip_e <- as.integer(factor(dat$ProjectCode))#index for random protocol effect
@@ -69,13 +70,12 @@ if(min.data==TRUE){
     dat$yearfac = as.factor(dat$wyear)
 
     # MODEL FORMULA with GAM for doy and year effects
-    
+
     #determine the number of knots for year
-    #add one knot for every 4 years of the time series follow Smith and Edwards
-    nyears <- length(unique(dat$wyear))
-    kyears<- ceiling(nyears/4) #round up to nearest whole number
+    N<-nrow(dat)
+    kyears<- 4 #add one knot for every 4 years of the time series follow Smith and Edwards
     kdays<-3 #polynomial doy effect
-    
+
     #smooth years
     smy<-smoothCon(s(wyear, bs="cr", k=kyears), data=dat)[[1]]
     Xsmy<-smy$X #basis function
@@ -83,134 +83,233 @@ if(min.data==TRUE){
     
     lcs.y<-inla.make.lincombs(data.frame(Xsmy))
     names(lcs.y)<-paste(names(lcs.y), "YR", sep="")#need unique names
-    
+
     dat<-cbind(dat, Xsmy)
-    
+
     #smooth day of year
     sdy<-smoothCon(s(doy, bs="cr", k=kdays), data=dat)[[1]]
     Xsdy<-sdy$X #basis function
     colnames(Xsdy)<-paste("BasisDay", 1:ncol(Xsdy), sep="")#need unique names
-    
+
     lcs.d<-inla.make.lincombs(data.frame(Xsdy))
     names(lcs.d)<-paste(names(lcs.d), "DAY", sep="")#need unique names
-    
+
     dat<-cbind(dat, Xsdy)
     lcs<-c(lcs.y, lcs.d)
     
+    Covariates<- data.frame(
+      Intercept=rep(1, N), 
+      YR1= Xsmy[,"BasisYR1"],
+      YR2= Xsmy[,"BasisYR2"],
+      YR3= Xsmy[,"BasisYR3"],
+      YR4= Xsmy[,"BasisYR4"],
+      DAY1= Xsdy[,"BasisDay1"],
+      DAY2= Xsdy[,"BasisDay2"],
+      DAY3= Xsdy[,"BasisDay3"],
+      DurationInHours=dat$DurationInHours
+    )
+    
+
     #Use penalised complex prior for random year effect
     hyper.iid<-list(prec=list(prior="pc.prec", param=c(2,0.05)))
     inla.setOption(scale.model.default=TRUE)
-    
-    formula<- ObservationCount ~ -1 + Xsmy + Xsdy + DurationInHours + f(kappa_k, model="iid", hyper=hyper.iid)  + f(yearfac, model="iid", hyper=hyper.iid) 
-    
-    
+
+    formula<- ObservationCount ~ -1 + Xsmy + Xsdy + DurationInHours + f(kappa_k, model="iid", hyper=hyper.iid) + f(yearfac, model="iid", hyper=hyper.iid)
+
+
     #fit the model using INLA
-    model<-try(inla(formula, family = "nbinomial", data = dat, 
-                        control.predictor = list(compute = TRUE), 
-                        control.compute = list(dic=TRUE, config = TRUE), 
+    model<-try(inla(formula, family = "nbinomial", data = dat,
+                        control.predictor = list(compute = TRUE),
+                        control.compute = list(dic=TRUE, config = TRUE),
                         lincomb=lcs, verbose =TRUE), silent = T)
 
-    #Dispersion Statistic
+
+    
+###Model with spatial effect on Abundance
+    #Create index variables
+    dat <- dat %>% mutate(site_idx = factor(paste(SurveyAreaIdentifier)), 
+        std_yr = wyear - Y2,
+        year_idx = as.numeric(factor(wyear))) %>% 
+      st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE)
+     
+      dat <- st_transform(dat, crs = utm_crs) %>% 
+        mutate(
+        easting = st_coordinates(.)[, 1]/1000,
+        northing = st_coordinates(.)[, 2]/1000) %>% 
+      arrange(SurveyAreaIdentifier, wyear)
+    
+      #determine the number of knots for year
+      #add one knot for every 4 years of the time series follow Smith and Edwards
+      nyears <- length(unique(dat$wyear))
+      kyears<- ceiling(nyears/4) #round up to nearest whole number
+      kdays<-3 #polynomial doy effect
+
+      #smooth years
+      smy<-smoothCon(s(wyear, bs="cr", k=kyears), data=dat)[[1]]
+      Xsmy<-smy$X #basis function
+      colnames(Xsmy)<-paste("BasisYR", 1:ncol(Xsmy), sep="")#need unique names
+
+      lcs.y<-inla.make.lincombs(data.frame(Xsmy))
+      names(lcs.y)<-paste(names(lcs.y), "YR", sep="")#need unique names
+
+      dat<-cbind(dat, Xsmy)
+
+      #smooth day of year
+      sdy<-smoothCon(s(doy, bs="cr", k=kdays), data=dat)[[1]]
+      Xsdy<-sdy$X #basis function
+      colnames(Xsdy)<-paste("BasisDay", 1:ncol(Xsdy), sep="")#need unique names
+
+      lcs.d<-inla.make.lincombs(data.frame(Xsdy))
+      names(lcs.d)<-paste(names(lcs.d), "DAY", sep="")#need unique names
+
+      dat<-cbind(dat, Xsdy)
+      lcs<-c(lcs.y, lcs.d)
+
+    
+    #Make a set of distinct study sites for mapping
+    site_map <- dat %>%
+      dplyr::select(SurveyAreaIdentifier, easting, northing) %>% distinct()
+
+    ##-----------------------------------------------------------
+    #Make a set of distinct study sites for mapping    
+    #Make a two extension hulls and mesh for spatial model
+    # 
+    # hull <- fm_extensions(
+    #   site_map,
+    #   convex = c(20, 50),
+    #   concave = c(35, 50)
+    # )
+    
+    #make the mesh this way so that the point fall on the vertices of the lattice
+    Loc<-site_map%>% dplyr::select(easting, northing) %>% 
+      st_drop_geometry() %>% distinct %>%  as.matrix()
+    
+    Bound<-inla.nonconvex.hull(Loc)
+   
+    mesh2<-inla.mesh.2d(Loc, 
+                           boundary = Bound,
+                           max.edge = c(100, 120), # km inside and outside
+                           cutoff = 0,
+                           crs = fm_crs(dat))
+    
+    A <- inla.spde.make.A(mesh2, Loc)  # pg 218 this formula should include an alpha, default is 2 if the model does not include times. 
+    
+    spde <- inla.spde2.pcmatern(
+      mesh = mesh2,
+      prior.range = c(500, 0.5),
+      prior.sigma = c(1, 0.5)
+    )
+    
+    # make index sets
+    alpha_idx <- inla.spde.make.index(name = "alpha", n.spde = mesh2$n)
+    
+    # make projector matrices
+    A_alpha <- inla.spde.make.A(mesh = mesh2, loc = Loc)
+    
+    # stack observed data
+    stack_fit <- inla.stack(
+      tag = "obs",
+      data = list(count = as.vector(dat$ObservationCount)), # response from data frame
+      effects = list(data.frame(
+        intercept = 1,
+        kappa = dat$site_idx
+      ), # predictors from data frame
+      alpha = alpha_idx, # or index sets if spatial
+      DurationInHours = dat$DurationInHours,
+      Xsmy = dat$Xsmy,
+      Xsdy = dat$Xsdy
+      ),
+      A = list(
+        1, # a value of 1 is given for non-spatial terms
+        A_alpha,
+        A_eps,
+        A_tau
+      )
+    )
+   
+###Model Formula
+    # iid prior
+    pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
+    
+    # components
+    svc_components <- ObservationCounts ~ -1 + Xsdy + Xsmy + DurationInHours + 
+      kappa(site_idx, model = "iid", constr = TRUE, hyper = list(prec = pc_prec)) +
+      alpha(geometry, model = spde)
+      ) 
+    
+    #Run Model
+    res <- bru(
+      svc_components,
+      like(
+        formula = svc_formula,
+        family = fam,
+        data = sp.data
+      ),
+      options = list(
+        control.compute = list(waic = TRUE, cpo = FALSE),
+        control.inla = list(int.strategy = "eb"),
+        verbose = FALSE
+      )
+    )
+    
+    
+    
+   #Dispersion Statistic
     mu1<-model$summary.fitted.values[,"mean"]
     E1<-(dat$ObservationCount-mu1)/ sqrt(mu1 + mu1^2) #Pearson residuals
     N<-nrow(dat)
-    p<-nrow(model$summary.fixed)
+    p<-nrow(model$summary.fixed + 2) # +1 for each the idd random effect
     Dispersion1<-sum(E1^2)/(N-p)
     print(paste("Dispersions Statistic out1 = ", Dispersion1, sep = ""))
+    
+    dat$mu1<-mu1
+    #plot ObservationCount and mu1 using ggplot, with 1:1 line
+    q<-ggplot(dat, aes(x=ObservationCount, y=mu1)) + geom_point() + geom_abline(intercept = 0, slope = 1)
+    ggsave(paste(plot.dir, sp.list[i], "_FitPlot.jpeg", plot=q, sep = ""))
 
+    #write the dispersion statistic to the output file
+    dispersion.csv$area_code<-site
+    dispersion.csv$SpeciesCode<-sp.list[i]
+    dispersion.csv$dispersion<-Dispersion1
     
-       # Repeat the whole thing 1000 times.
-    NSim <- 1000
-    SimData <- inla.posterior.sample(n = NSim, result = model)
-    N  <- nrow(dat)
-    Ysim <- matrix(nrow = N, ncol = NSim)
-    mu.i <- matrix(nrow = N, ncol = NSim)
+    write.table(dispersion.csv, file = paste(out.dir,  "DispersionStat",".csv", sep = ""), 
+               col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
     
-    MyParams <- rownames(model$summary.fixed)
-    MyID <- function(x){ which(rownames(SimData[[1]]$latent) == x) }
-   
-    ###HERE## 
-    RowNum.Betas<-lapply(MyParams, function(x) grep(x, rownames(SimData[[1]]$latent), fixed=TRUE))
-    RowNum.Betas<-as.numeric(RowNum.Betas)
+    #Plot the data for visual inspection
     
-    MyParams <- paste("kappa_k:", levels(dat$kappa_k), sep = "")
+    #Convert the data to a spatial object
+    dat_sf <- st_as_sf(dat, coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326)
+    #remove zero ObservationCounts from the output plot
+    dat_sf<-dat_sf %>% group_by(SurveyAreaIdentifier, geometry) %>% summarise(ObservationCount = sum(ObservationCount)) 
     
-    RowNum.ai<-lapply(MyParams, function(x) grep(x, rownames(SimData[[1]]$latent), fixed=TRUE))
-    RowNum.ai<-as.numeric(RowNum.ai)
-    
-    RowNum.ai <- unlist(RowNum.ai)
-    RowNum.ai
-    
-    
-    
-    for (i in 1: NSim){
-      Betas <- SimData[[i]]$latent[RowNum.Betas]
-      ai    <- SimData[[i]]$latent[RowNum.ai]
-      FixedPart   <- Xm %*% Betas
-      aiPart      <- ai[as.numeric(dat$kappa_k)]
-      mu.i[,i]    <- exp(FixedPart + aiPart)
-      Ysim[,i]    <- rpois(n = nrow(Owls2), lambda = mu.i[,i])
-    }
-    table(Ysim[,1])
-    table(Ysim[,2])
-    table(Ysim[,3])
-    
-    
-    # We could calculate the number of zeros in each of the 1,000
-    # data sets.
-    zeros <- vector(length = NSim)
-    for(i in 1:NSim){
-      zeros[i] <- sum(Ysim[,i] == 0)
-    }
-    
-    table(zeros)
-    
-    # From the 1,000 simulated data sets, in 2 simulated
-    # data sets we had 1141 zeros. In 2 simulated data sets
-    # we had 1148 zeros,etc......
-    # Your results will be different as mine.
-    
-    # Just type 
-    Ysim[,1]
-    Ysim[,2]
-    Ysim[,3]
-    #etc
-    
-    # Let's plot this as a table
-    # Figure 20.24
-    par(mfrow = c(2,1), mar = c(5,5,2,2), cex.lab = 1.5)
-    
-    plot(T1, ylim = c(-4,5), lwd = 2, cex.lab = 1.5,
-         xlab = "Arrival time")
-    abline(h = 0, lty = 2)
-    points(x = Owls2$ArrivalTime,
-           y = E1, 
-           pch = 16,
-           cex = 0.5,
-           col = grey(0.1))
+    #write plot to Plots folder in Output
+       p<-ggplot(data = dat_sf) +
+      # Select a basemap
+      annotation_map_tile(type = "cartolight", zoom = NULL, progress = "none") +
+      # Plot the points, size by the sum of ObservationCount within a year
+      geom_sf(aes(size=ObservationCount)) +
+      # Facet by survey_year to create the multi-paneled map
+      #facet_wrap(~ wyear) +
+      # Add a theme with a minimal design and change the font styles, to your preference
+      theme_minimal() +
+      #theme(legend.position = "bottom") +
+      # To make the points in the legend larger without affecting map points
+      guides(color = guide_legend(override.aes = list(size = 3))) +
+      #make the text on the x-axis vertical
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      # Define the title and axis names
+      labs(title = sp.list[i], x = "Longitude", y = "Latitude")+
+      # Change legend lable
+      scale_size_continuous(name = "Sum Observation Count")
+ 
+    ggsave(paste(plot.dir, sp.list[i], "_SumCountPlot.jpeg", sep = ""), plot = p, width = 10, height = 6, units = "in")
+      
+    #turn off device
+    dev.off()
     
     
+      
     
-    plot(table(zeros), 
-         #axes = FALSE,
-         xlab = "How often do we have 0, 1, 2, 3, etc. number of zeros",
-         ylab = "Number of zeros in simulated data sets",
-         xlim = c(0, 170),
-         main = "Simulation results")
-    points(x = sum(Owls2$NCalls == 0), 
-           y = 0, 
-           pch = 16, 
-           cex = 5, 
-           col = 2)
-    # The red dot is the number of zeros in the original data set.
-    # The data simulated from the Poisson model
-    # contains to many zeros.
-    #########################################
-    
-    
-    
-    
-    
-      } #end min.data  
+    } #end min.data  
    }#end SpeciesLoop
 } #end if SalishSea

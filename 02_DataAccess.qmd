@@ -209,7 +209,30 @@ ggplot(data = events_sf) +
 
 ```
 
-## 6. Spatial Data    
+## 6. Effort Plot (Duration in Hours)
+
+The duration of each survey is an important variable to consider when analyzing trends. Longer surveys may detect more birds. There is a substaintial difference in survey duration between BCCWS and PSSS. We therefore want to model this relationship. We look here to see if the relationship look linear or if there is a better model to fit the data.
+
+```{r}
+
+all.data<-sp.data %>% left_join(events, by = c("ProjectCode", "SurveyAreaIdentifier", "wyear", "YearCollected", "MonthCollected", "DayCollected"))
+
+ggplot(data = all.data) +
+  geom_point(aes(x = DurationInHours, y = ObservationCount), alpha = 0.5) +
+  #add loess smooth
+  geom_smooth(aes(x = DurationInHours, y = ObservationCount), method = "loess", se = FALSE, color = "red") +
+  facet_wrap(~ SpeciesCode, scales = "free_y") +
+  labs(title = "Duration of Survey vs. Observation Count",
+       x = "Duration (hours)",
+       y = "Observation") +
+  theme_minimal()
+
+#the relationship for a lot of species looks non-linear. There are diminishing returns to survey duration. We therefore suggest that this is modeled as a covarite in the model and not an offset. 
+
+```    
+
+
+## 7. Spatial Data    
 
 When deriving population trends, we are often interesting in doing this for specific geographic areas of interest. These could be management units or areas of conservation concern. Here we will create a spatial object that represents the Salish Sea and its subregions: Country. 
 

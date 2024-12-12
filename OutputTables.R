@@ -40,3 +40,13 @@ trends.csv$version <- "2025"
 trends.csv$season<-"Winter"
 trends.csv$sample_size_units <- "Number of Routes"
 
+
+## Create .csv file for dispersion stat
+
+dispersion.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3, byrow = FALSE,
+                                    dimnames = NULL))
+names(dispersion.csv) <- c("area_code", "SpeciesCode", "dispersion")
+
+write.table(dispersion.csv, file = paste(out.dir,  "DispersionStat",".csv", sep = ""), 
+            row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
+

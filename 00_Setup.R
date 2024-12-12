@@ -22,7 +22,7 @@ devtools::install_github("ropensci/rnaturalearthhires")
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
                  exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
-                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn)
+                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, maps, splancs)
 
 
 # Function to calculate duration in hours
@@ -39,3 +39,5 @@ calculate_duration <- function(start, end) {
   
   return(duration_hours)
 }
+
+utm_crs <- paste0("EPSG:326", sprintf("%02d", 10))
