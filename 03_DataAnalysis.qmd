@@ -10,6 +10,19 @@ editor: visual
 
 A first assessment of coastal waterbird trends will be done for the full extent of the Salish Sea, and for each country separately. This is done on a species-by-species basis and is done without using a spatially explicit model to start. 
 
+Run setup if starting a new environment.
+```{r}
+
+source("00_Setup.R")
+
+#Manually Specify the start and end year of the analysis
+Y1 = 2008
+Y2 = 2022
+
+
+```
+
+
 ### 3.1 International Assessment
 
 ```{r}

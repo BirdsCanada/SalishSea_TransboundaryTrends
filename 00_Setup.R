@@ -12,12 +12,12 @@ data.dir <- "Data/"
 plot.dir <- "Output/Plots/"
 
 #Load required libraries
-install.packages("remotes")
-remotes::install_github("BirdsCanada/naturecounts")
+#install.packages("remotes")
+#remotes::install_github("BirdsCanada/naturecounts")
 
-install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE) 
+#install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE) 
 
-devtools::install_github("ropensci/rnaturalearthhires")
+#devtools::install_github("ropensci/rnaturalearthhires")
 
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
@@ -41,3 +41,10 @@ calculate_duration <- function(start, end) {
 }
 
 utm_crs <- paste0("EPSG:326", sprintf("%02d", 10))
+
+
+epsg6703km <- paste(
+  "+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5",
+  "+lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83",
+  "+units=km +no_defs"
+)

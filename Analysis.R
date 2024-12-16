@@ -54,23 +54,29 @@ if(min.data==TRUE){
     #If a species was never detected on a route, we will not include that route in the species specific analysis
     #This is considered out of range or in unsuitable habitat
     dat<-dat %>% group_by(SurveyAreaIdentifier) %>% filter(sum(ObservationCount)>0) %>% ungroup()
-    trends.csv$sample_size<-n_distinct(dat$SurveyAreaIdentifier)
+    trends.csv$sample_size<-n_distinct(dat$SurveyAreaIdentifier) #assign number of routes to output table
     
     # create date and day of year columns
     dat$date <- as.Date(paste(dat$YearCollected, dat$MonthCollected, 
                                    dat$DayCollected, sep = "-"))
     dat$doy <- as.numeric(format(dat$date, "%j"))
     
-###Model without spatail effect on abundance    
-    #standardize year to max, prepare index variables
-    #where i = grid cell, k = route, t = year, e = protocol_id
-    dat <- dat %>% mutate(std_yr = wyear - Y2)
-    #dat$ellip_e <- as.integer(factor(dat$ProjectCode))#index for random protocol effect
-    dat$kappa_k <- as.integer(factor(dat$SurveyAreaIdentifier))#index for the random route effect
-    dat$yearfac = as.factor(dat$wyear)
+###Model without spatail effect on abundance 
+    
+#Create index variables
+    dat <- dat %>% mutate( 
+      std_yr = wyear - Y2,
+      kappa = as.integer(factor(dat$SurveyAreaIdentifier)),
+      year_idx = as.numeric(factor(wyear))) %>% 
+      st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE)
+    
+    dat <- st_transform(dat, crs = utm_crs) %>% 
+      mutate(
+        easting = st_coordinates(.)[, 1]/1000,
+        northing = st_coordinates(.)[, 2]/1000) %>% 
+      arrange(SurveyAreaIdentifier, wyear)
 
-    # MODEL FORMULA with GAM for doy and year effects
-
+  #GAM for doy and year effects
     #determine the number of knots for year
     N<-nrow(dat)
     kyears<- 4 #add one knot for every 4 years of the time series follow Smith and Edwards
@@ -89,7 +95,7 @@ if(min.data==TRUE){
     #smooth day of year
     sdy<-smoothCon(s(doy, bs="cr", k=kdays), data=dat)[[1]]
     Xsdy<-sdy$X #basis function
-    colnames(Xsdy)<-paste("BasisDay", 1:ncol(Xsdy), sep="")#need unique names
+    colnames(Xsdy)<-paste("BasisDAY", 1:ncol(Xsdy), sep="")#need unique names
 
     lcs.d<-inla.make.lincombs(data.frame(Xsdy))
     names(lcs.d)<-paste(names(lcs.d), "DAY", sep="")#need unique names
@@ -97,168 +103,106 @@ if(min.data==TRUE){
     dat<-cbind(dat, Xsdy)
     lcs<-c(lcs.y, lcs.d)
     
+    #create the datframe of covariates
     Covariates<- data.frame(
       Intercept=rep(1, N), 
-      YR1= Xsmy[,"BasisYR1"],
-      YR2= Xsmy[,"BasisYR2"],
-      YR3= Xsmy[,"BasisYR3"],
-      YR4= Xsmy[,"BasisYR4"],
-      DAY1= Xsdy[,"BasisDay1"],
-      DAY2= Xsdy[,"BasisDay2"],
-      DAY3= Xsdy[,"BasisDay3"],
-      DurationInHours=dat$DurationInHours
+      BasisYR1= Xsmy[,"BasisYR1"],
+      BasisYR2= Xsmy[,"BasisYR2"],
+      BasisYR3= Xsmy[,"BasisYR3"],
+      BasisYR4= Xsmy[,"BasisYR4"],
+      #year_idx = dat$year_idx,
+      BasisDAY1= Xsdy[,"BasisDAY1"],
+      BasisDAY2= Xsdy[,"BasisDAY2"],
+      BasisDAY3= Xsdy[,"BasisDAY3"],
+      DurationInHours=dat$DurationInHours, 
+      kappa = dat$kappa
     )
     
-
-    #Use penalised complex prior for random year effect
-    hyper.iid<-list(prec=list(prior="pc.prec", param=c(2,0.05)))
-    inla.setOption(scale.model.default=TRUE)
-
-    formula<- ObservationCount ~ -1 + Xsmy + Xsdy + DurationInHours + f(kappa_k, model="iid", hyper=hyper.iid) + f(yearfac, model="iid", hyper=hyper.iid)
-
-
-    #fit the model using INLA
-    model<-try(inla(formula, family = "nbinomial", data = dat,
-                        control.predictor = list(compute = TRUE),
-                        control.compute = list(dic=TRUE, config = TRUE),
-                        lincomb=lcs, verbose =TRUE), silent = T)
-
-
-    
-###Model with spatial effect on Abundance
-    #Create index variables
-    dat <- dat %>% mutate(site_idx = factor(paste(SurveyAreaIdentifier)), 
-        std_yr = wyear - Y2,
-        year_idx = as.numeric(factor(wyear))) %>% 
-      st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE)
-     
-      dat <- st_transform(dat, crs = utm_crs) %>% 
-        mutate(
-        easting = st_coordinates(.)[, 1]/1000,
-        northing = st_coordinates(.)[, 2]/1000) %>% 
-      arrange(SurveyAreaIdentifier, wyear)
-    
-      #determine the number of knots for year
-      #add one knot for every 4 years of the time series follow Smith and Edwards
-      nyears <- length(unique(dat$wyear))
-      kyears<- ceiling(nyears/4) #round up to nearest whole number
-      kdays<-3 #polynomial doy effect
-
-      #smooth years
-      smy<-smoothCon(s(wyear, bs="cr", k=kyears), data=dat)[[1]]
-      Xsmy<-smy$X #basis function
-      colnames(Xsmy)<-paste("BasisYR", 1:ncol(Xsmy), sep="")#need unique names
-
-      lcs.y<-inla.make.lincombs(data.frame(Xsmy))
-      names(lcs.y)<-paste(names(lcs.y), "YR", sep="")#need unique names
-
-      dat<-cbind(dat, Xsmy)
-
-      #smooth day of year
-      sdy<-smoothCon(s(doy, bs="cr", k=kdays), data=dat)[[1]]
-      Xsdy<-sdy$X #basis function
-      colnames(Xsdy)<-paste("BasisDay", 1:ncol(Xsdy), sep="")#need unique names
-
-      lcs.d<-inla.make.lincombs(data.frame(Xsdy))
-      names(lcs.d)<-paste(names(lcs.d), "DAY", sep="")#need unique names
-
-      dat<-cbind(dat, Xsdy)
-      lcs<-c(lcs.y, lcs.d)
-
-    
+    #Create the Mesh
     #Make a set of distinct study sites for mapping
     site_map <- dat %>%
       dplyr::select(SurveyAreaIdentifier, easting, northing) %>% distinct()
 
-    ##-----------------------------------------------------------
-    #Make a set of distinct study sites for mapping    
-    #Make a two extension hulls and mesh for spatial model
-    # 
-    # hull <- fm_extensions(
-    #   site_map,
-    #   convex = c(20, 50),
-    #   concave = c(35, 50)
-    # )
-    
-    #make the mesh this way so that the point fall on the vertices of the lattice
-    Loc<-site_map%>% dplyr::select(easting, northing) %>% 
-      st_drop_geometry() %>% distinct %>%  as.matrix()
-    
-    Bound<-inla.nonconvex.hull(Loc)
    
-    mesh2<-inla.mesh.2d(Loc, 
+    #make the mesh this way so that the point fall on the vertices of the lattice
+    Loc_all<-as.matrix(st_coordinates(dat))
+    
+    #make unique locations
+    Loc_unique<-dat %>% dplyr::select(SurveyAreaIdentifier, easting, northing) %>%
+      distinct() %>%
+      dplyr::select(easting, northing) %>%
+      st_drop_geometry() %>% 
+      as.matrix()
+    
+    Bound<-inla.nonconvex.hull(Loc_unique)
+   
+    #Create the mesh with unique locations
+    mesh2<-fm_mesh_2d_inla(Loc_unique, 
                            boundary = Bound,
-                           max.edge = c(100, 120), # km inside and outside
+                           max.edge = c(150, 200), # km inside and outside
                            cutoff = 0,
                            crs = fm_crs(dat))
     
-    A <- inla.spde.make.A(mesh2, Loc)  # pg 218 this formula should include an alpha, default is 2 if the model does not include times. 
-    
-    spde <- inla.spde2.pcmatern(
+    #SPDE
+    spde <- inla.spde2.pcmatern(  #could also use inla.spde2.pcmatern
       mesh = mesh2,
       prior.range = c(500, 0.5),
       prior.sigma = c(1, 0.5)
     )
+       
+    #Spatial Fields
+    # make index sets for the spatial model
+    alpha_idx <- inla.spde.make.index(name = "alpha", n.spde = spde$n.spde) #n.repl is used to account for repeated measure at the same location over time. 
     
-    # make index sets
-    alpha_idx <- inla.spde.make.index(name = "alpha", n.spde = mesh2$n)
+    #Projection matrix A using all locations
+    A <- inla.spde.make.A(mesh=mesh2, loc=Loc_all)  # pg 218 this formula should include an alpha, default is 2 if the model does not include times. 
     
-    # make projector matrices
-    A_alpha <- inla.spde.make.A(mesh = mesh2, loc = Loc)
-    
-    # stack observed data
-    stack_fit <- inla.stack(
-      tag = "obs",
-      data = list(count = as.vector(dat$ObservationCount)), # response from data frame
-      effects = list(data.frame(
-        intercept = 1,
-        kappa = dat$site_idx
-      ), # predictors from data frame
-      alpha = alpha_idx, # or index sets if spatial
-      DurationInHours = dat$DurationInHours,
-      Xsmy = dat$Xsmy,
-      Xsdy = dat$Xsdy
-      ),
+    #Create Stack Object for INLA
+    Stack <- inla.stack (
+      tag="FitGAM", 
+      data=list(count=as.vector(dat$ObservationCount)), #response from the dataframe
+      effects = list(Covariates=Covariates, alpha = alpha_idx),  #covariate list
       A = list(
-        1, # a value of 1 is given for non-spatial terms
-        A_alpha,
-        A_eps,
-        A_tau
+        1, #value of 1 to non-spatial terms
+        A
       )
     )
-   
-###Model Formula
-    # iid prior
+    
+    #Use penalised complex prior for random year effect
     pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
     
-    # components
-    svc_components <- ObservationCounts ~ -1 + Xsdy + Xsmy + DurationInHours + 
-      kappa(site_idx, model = "iid", constr = TRUE, hyper = list(prec = pc_prec)) +
-      alpha(geometry, model = spde)
-      ) 
+    #Create Model Formula which does not include the spatial varying effect
+    formulaGAM<- count ~ -1 + Intercept + BasisYR1 + BasisYR2 + BasisYR3 + BasisYR4 + BasisDAY1 + BasisDAY2 + BasisDAY3 + DurationInHours + f(kappa, model="iid") 
     
-    #Run Model
-    res <- bru(
-      svc_components,
-      like(
-        formula = svc_formula,
-        family = fam,
-        data = sp.data
-      ),
-      options = list(
-        control.compute = list(waic = TRUE, cpo = FALSE),
-        control.inla = list(int.strategy = "eb"),
-        verbose = FALSE
-      )
-    )
+    #fit the non-spatial model using INLA
+    M1<-inla(formulaGAM, family = "nbinomial", data = inla.stack.data(Stack), 
+                    control.predictor = list(A=inla.stack.A(Stack)),
+                    control.compute = list(dic=TRUE, waic=TRUE, config = TRUE),
+                    lincomb=lcs, verbose =TRUE)
     
+    #Create Model Formula which includes the spatial varying effect
+    formulaGAMsp<- count ~ -1 + Intercept + BasisYR1 + BasisYR2 + BasisYR3 + BasisYR4 + BasisDAY1 + BasisDAY2 + BasisDAY3 + DurationInHours + f(kappa, model="iid") + f(alpha_idx, model =spde)
     
+    #fit the non-spatial model using INLA
+    M2<-inla(formulaGAMsp, family = "nbinomial", data = inla.stack.data(Stack), 
+             control.predictor = list(A=inla.stack.A(Stack)),
+             control.compute = list(dic=TRUE, waic=TRUE, config = TRUE),
+             lincomb=lcs, verbose =TRUE)
     
+    #Compare the DIC and WIC values
+   dic<-c(M1$dic$dic, M2$dic$dic)
+   wic<-c(M1$waic$waic, M2$waic$waic)  
+   z.out<-cbind(dic, wic)
+   rownames(z.out)<-c("GAM", "GAM + SPATIAL")
+   z.out<-as.data.frame(z.out)
+   z.out$SpeciesCode<-sp.code
+  
+   
    #Dispersion Statistic
-    mu1<-model$summary.fitted.values[,"mean"]
+    mu1<-M1$summary.fitted.values[,"mean"]
     E1<-(dat$ObservationCount-mu1)/ sqrt(mu1 + mu1^2) #Pearson residuals
     N<-nrow(dat)
-    p<-nrow(model$summary.fixed + 2) # +1 for each the idd random effect
+    p<-nrow(M1$summary.fixed + 2) # +1 for each the idd random effect
     Dispersion1<-sum(E1^2)/(N-p)
     print(paste("Dispersions Statistic out1 = ", Dispersion1, sep = ""))
     
