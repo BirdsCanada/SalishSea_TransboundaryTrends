@@ -156,6 +156,9 @@ sp.list <-c("SUSC", "LTDU", "BUFF")
 #Now filter the full dataset by the species list
 in.data<-in.data[in.data$SpeciesCode %in% sp.list,]
 
+#write to Data folder in working directory
+write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
+
 ```
 
 Here we select species that are detected by both surveys. In the analysis script we will set some minumum data requirements to remove species that do not have enough data to estimate trends.

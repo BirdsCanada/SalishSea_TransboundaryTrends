@@ -37,6 +37,10 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # seems to be a few duplicate records in data file; this keeps only one
   in.BCCWS <- distinct(in.BCCWS)
   
+  #create day of year column 
+  in.BCCWS$doy <- as.numeric(format(as.Date(paste(in.BCCWS$YearCollected, in.BCCWS$MonthCollected, in.BCCWS$DayCollected, sep="-")), "%j"))
+  
+  
   # keep only one survey per month by selecting the first survey if there are duplicates
   in.BCCWS <- in.BCCWS %>% group_by(SurveyAreaIdentifier, YearCollected, MonthCollected) %>% slice_min(doy) %>% ungroup()
   
@@ -84,12 +88,11 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   
   # removed NA ObservationCounts
   in.BCCWS <- in.BCCWS %>% filter(!is.na(ObservationCount))
-
+  
   # create an events matrix for future zero filling
   event.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
   # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
   event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
-  
   # ensure that each SurveyAreaIdentifier has a single decimal latitude and longitude. If multiple, take the first
   event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier) %>% slice_min(DecimalLatitude) %>% ungroup()
   

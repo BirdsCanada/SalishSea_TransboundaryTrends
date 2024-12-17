@@ -17,6 +17,9 @@ in.PSSS <- subset(in.PSSS, MonthCollected %in% c(10:12, 1:4))
 # if duplicate records in data file; this keeps only one
 in.PSSS <- distinct(in.PSSS)
 
+#create day of year column 
+in.PSSS$doy <- as.numeric(format(as.Date(paste(in.PSSS$YearCollected, in.PSSS$MonthCollected, in.PSSS$DayCollected, sep="-")), "%j"))
+
 # keep only one survey per month by selecting the first survey if there are duplicates
 in.PSSS <- in.PSSS %>% group_by(SurveyAreaIdentifier, YearCollected, MonthCollected) %>% slice_min(doy) %>% ungroup()
 
