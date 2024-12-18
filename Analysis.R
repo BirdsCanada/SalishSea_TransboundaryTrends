@@ -3,12 +3,14 @@
 if(site=="BCCWS"){
 
   sp.dat<-sp.data %>% filter(ProjectCode=="BCCWS")
+  event<-events %>% filter(ProjectCode=="BCCWS")
   
 }  
 
 if(site=="PSSS"){
   
   sp.dat<-sp.data %>% filter(ProjectCode=="PSSS")
+  event<-events %>% filter(ProjectCode=="PSSS")
   
 } 
 
@@ -16,6 +18,7 @@ if(site=="PSSS"){
 if(site=="SalishSea"){
   
   sp.dat<-sp.data 
+  event<-events
 
 }
   
@@ -30,7 +33,7 @@ if(site=="SalishSea"){
     sp.code<-sp.list[i]
     
 ##zero-fill the dat using the events dataframe##
-    dat<-left_join(events, dat, by= c("ProjectCode", "SurveyAreaIdentifier", "wyear", "YearCollected", "MonthCollected", "DayCollected"))
+    dat<-left_join(event, dat, by= c("ProjectCode", "SurveyAreaIdentifier", "wyear", "YearCollected", "MonthCollected", "DayCollected"))
 #Observation Counts will be backfilled with a 0 whenever it is NA
     dat$ObservationCount[is.na(dat$ObservationCount)]<-0
     
@@ -70,6 +73,8 @@ if(site=="SalishSea"){
   min.data <- FALSE
     }
 
+    print(min.data)
+    
     #only continue if the species meets the minimum data requirements      
 if(min.data==TRUE){
     
@@ -124,7 +129,7 @@ if(min.data==TRUE){
     dispersion.csv$SpeciesCode<-sp.list[i]
     dispersion.csv$dispersion<-Dispersion1
     
-    write.table(dispersion.csv, file = paste(out.dir,  "DispersionStat",".csv", sep = ""),
+    write.table(dispersion.csv, file = paste(out.dir,  site, "DispersionStat",".csv", sep = ""),
                 col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
     
     dat$mu1<-mu1
@@ -253,7 +258,7 @@ N<-nrow(dat)
    z.out<-as.data.frame(z.out)
    z.out$SpeciesCode<-sp.code
 
-   write.table(z.out, file = paste(out.dir,  "ModelComparison.csv", sep = ""),
+   write.table(z.out, file = paste(out.dir,  site, "ModelComparison.csv", sep = ""),
                col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
    
 

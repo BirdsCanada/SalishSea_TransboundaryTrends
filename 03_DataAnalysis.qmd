@@ -42,14 +42,18 @@ Observation Count ~ DurationInHours +
 sp.data<-read.csv("Data/sp.data.csv")
 #Create a list of species
 sp.list<-unique(sp.data$SpeciesCode) 
-#remove NOFU from the sp.list
-sp.list<-sp.list[sp.list!="NOFU"]
+
+
+#remove manually remove species for the list
+#sp.list<-sp.list[sp.list!="NOFU"]
+#to restart the list if it crashes
+#sp.list<-sp.list[47:length(sp.list)]
 
 #Load your saved events data which is needed for zero-filling
 events<-read.csv("Data/events.csv")
 
 #Define your site. The option here are "SalishSea", "BCCWS" or "PSSS"
-site <- "SalishSea"
+site <- "BCCWS"
 
 #Create a data frame to store the results. 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
