@@ -29,18 +29,6 @@ write.table(trends.csv, file = paste(out.dir,
                                      site, "_TrendsSlope", ".csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
-#Populate the columns that you know will be consistent for all outputs
-
-indices.csv$results_code <- "SalishSea"
-indices.csv$version <- "2025"
-indices.csv$season<-"Winter"
-
-trends.csv$results_code <- "SalishSea"
-trends.csv$version <- "2025"
-trends.csv$season<-"Winter"
-trends.csv$sample_size_units <- "Number of Routes"
-
-
 ## Create .csv file for dispersion stat
 
 dispersion.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3, byrow = FALSE,

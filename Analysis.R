@@ -1,15 +1,31 @@
 #Analysis scripts
 
+if(site=="BCCWS"){
+
+  sp.dat<-sp.data %>% filter(ProjectCode=="BCCWS")
+  
+}  
+
+if(site=="PSSS"){
+  
+  sp.dat<-sp.data %>% filter(ProjectCode=="PSSS")
+  
+} 
+
 #Specify the spatial extent of the analysis
 if(site=="SalishSea"){
   
+  sp.dat<-sp.data 
+
+}
+  
   #Create a loop for the species list
-  for(i in 1:length(species_list)){
+  for(i in 1:length(sp.list)){
     
     #i<-1 #for testing
     
     #Subset the data for the species
-    dat <- sp.data %>% filter(SpeciesCode==sp.list[i])
+    dat <- sp.dat %>% filter(SpeciesCode==sp.list[i])
     dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, .keep_all = TRUE)
     sp.code<-sp.list[i]
     
@@ -153,10 +169,6 @@ if(min.data==TRUE){
 
      ggsave(paste(plot.dir, sp.list[i], "_SumCountPlot.jpeg", sep = ""), plot = p, width = 10, height = 6, units = "in")
 
-     #turn off device
-     dev.off()
-     
-  
 #create the datframe of covariates
 N<-nrow(dat)
 
@@ -222,8 +234,8 @@ N<-nrow(dat)
     )
     
     formula.sp<- count ~ -1 + Intercept + DurationInHours + 
-      f(kappa, model="iid", hyper=hyper.iid) + f(alpha, model =spde)+ f(tau, model =spde) + 
-      f(doy_idx, model = "ar1", hyper=prec.prior) 
+      f(kappa, model="iid", hyper=hyper.iid) + f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
+       
 
 
     #fit the non-spatial model using INLA
@@ -271,30 +283,30 @@ indices.csv<-tmp1 %>% dplyr::select(wyear, index, lower_ci, upper_ci, stdev) %>%
 species_code = sp.code,
 years = paste(min(dat$YearCollected), "-", max(dat$YearCollected), sep = ""),
 year = wyear,
-wyearperiod ="all years",
-wyearseason = "winter",
-wyeararea_code = site,
-wyearmodel_type = "GLM DOY AR1 ALPHA+TAU SPATIAL",
-wyearspecies_id=sp.id,
-wyearspecies_name=species_name,
-wyearspecies_sci_name=species_sci_name,
-wyearerror="",
+period ="all years",
+season = "winter",
+area_code = site,
+model_type = "GLM DOY AR1 ALPHA+TAU SPATIAL",
+species_id=sp.id,
+species_name=species_name,
+species_sci_name=species_sci_name,
+error="",
 #Assing missing data fields 
-wyearupload_id="",
-wyearstderr="",
-wyeartrend_id="",
-wyearsmooth_upper_ci="",
-wyearsmooth_lower_ci="",
-wyearupload_dt="",
-wyearfamily="nbinomial",
-wyearresults_code = "BCCWS+PSSS",
-wyearversion = "2025",
-wyearseason="Winter",
-wyeararea_code="Salish Sea",
+upload_id="",
+stderr="",
+trend_id="",
+smooth_upper_ci="",
+smooth_lower_ci="",
+upload_dt="",
+family="nbinomial",
+results_code = "BCCWS+PSSS",
+version = "2025",
+season="Winter",
+area_code=site,
+trend_index="") #look at CMMN code to generate in next round of analysis
 
 # Run LOESS function
-LOESS_index = loess_func(indices.csv$index, indices.csv$year),
-trend_index="") #look at CMMN code to generate in next round of analysis
+indices.csv$LOESS_index = loess_func(indices.csv$index, indices.csv$wyear)
 
 # Order output before printing to table
 indices.csv<-indices.csv %>% dplyr::select(results_code, version, area_code, season, period, species_code, species_id, year, index, stderr, stdev, upper_ci, lower_ci, LOESS_index, trend_index)
@@ -323,6 +335,10 @@ gen_years <- nc_query_table(table = "SpeciesLifeHistory") %>%
   filter(subcategDescr == "Average generation length (years)") %>% 
   filter(speciesID == sp.id) %>% pull(value) %>% as.numeric()
 gen.length <- round(gen_years  *  3)
+
+if(length(gen.length)>0){
+  gen.length<-min(gen.length)
+}
 
 if(is.na(time.period)) {
   endyr <- max(dat$wyear)
@@ -404,7 +420,7 @@ for(p in 1:length(time.period)) {
            period =period,
            season = "winter",
            results_code = "BCCWS+PSSS",
-           area_code = "Salish Sea",
+           area_code = site,
            version=2025, 
            species_code = sp.code,
            species_id=sp.id, 
@@ -453,7 +469,6 @@ for(p in 1:length(time.period)) {
            upload_dt = "")
  
   write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
-  
   
   write.table(write.trend, 
               file = paste(out.dir, site, "_TrendsEndpoint.csv", sep = ""), 
@@ -505,9 +520,9 @@ for(p in 1:length(time.period)) {
               sep = ",", 
               col.names = FALSE)  
 
-  } #end period loop
-} #end min.data  
+      } #end period loop
+    } #end min.data  
   }#end SpeciesLoop
-} #end if SalishSea
+
 
 
