@@ -95,7 +95,7 @@ Now you can import the data using the file name.
 ```{r PSSS, warning=FALSE}
 
 #sample code to access PSSS data from your working Data directory
-PSSS <- read_excel("Data/10.13.2022 PSSS data.xlsx")
+PSSS <- read_excel("Data/PSSS_022024.xlsx") #copy contains wyear 2022
 
 ```
 
@@ -122,6 +122,7 @@ Now it is time to do some data cleaning before we combine the BCCWS and PSSS dat
 ```{r}
 
 #Manually Specify the start and end year of the analysis
+#Keep in mind that this is the winter year (wyear) which is the start year of the survey, #The survey straddles two calendar years
 Y1 = 2008
 Y2 = 2022
 

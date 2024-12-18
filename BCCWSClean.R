@@ -52,6 +52,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # filter data by years 
   in.BCCWS <- subset(in.BCCWS, wyear >= Y1 & wyear <= Y2)
   
+  
   # Because there are errors in the Duration in Hours column, I will adjust the TimeObservationsEnded and TimeObservationStarted column.
   # Specifically, any value that is < 6 AM I will add 12 to bring it into 24 hour time.
   in.BCCWS$TimeObservationsEnded <- as.numeric(in.BCCWS$TimeObservationsEnded)

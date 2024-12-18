@@ -9,8 +9,6 @@ in.PSSS <- read.csv("Data/PSSS.csv") # reads in back-up copy of database
 in.PSSS$SpeciesCode<-as.factor(in.PSSS$SpeciesCode)
 in.PSSS <- subset(in.PSSS, !is.na(SpeciesCode))
 
-# filter data by years 
-in.PSSS <- subset(in.PSSS, YearCollected >= Y1 & YearCollected <= Y2)
 # filter data by months October to April
 in.PSSS <- subset(in.PSSS, MonthCollected %in% c(10:12, 1:4))
 
@@ -59,7 +57,6 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
 # for example, January-April 2005 would be wyear 2004
   in.PSSS$wyear <- ifelse(in.PSSS$MonthCollected %in% c(1:4), in.PSSS$YearCollected-1, 
                            in.PSSS$YearCollected)
-  
   # filter data by years 
   in.PSSS <- subset(in.PSSS, wyear >= Y1 & wyear <= Y2)
 

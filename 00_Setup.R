@@ -24,7 +24,6 @@ librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredicto
                  exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
                  rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, maps, splancs)
 
-
 # Function to calculate duration in hours
 calculate_duration <- function(start, end) {
   # Convert start and end times to total minutes
@@ -42,9 +41,18 @@ calculate_duration <- function(start, end) {
 
 utm_crs <- paste0("EPSG:326", sprintf("%02d", 10))
 
+# 
+# epsg6703km <- paste(
+#   "+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5",
+#   "+lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83",
+#   "+units=km +no_defs"
+# )
 
-epsg6703km <- paste(
-  "+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5",
-  "+lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83",
-  "+units=km +no_defs"
-)
+##LOESS function
+
+loess_func <- function(i,y){
+  tmp <- loess(i~y, 
+               span=0.55, na.action = na.exclude)
+  preds <- predict(tmp)
+  return(preds)
+}
