@@ -12,6 +12,9 @@ if(site=="PSSS"){
   sp.dat<-sp.data %>% filter(ProjectCode=="PSSS")
   event<-events %>% filter(ProjectCode=="PSSS")
   
+  #This is fixed in the data cleaning script and can be removed during next round. 
+  event<-event %>% filter(DurationInHours<=3)
+  
 } 
 
 #Specify the spatial extent of the analysis
@@ -36,12 +39,17 @@ if(site=="SalishSea"){
     dat<-left_join(event, dat, by= c("ProjectCode", "SurveyAreaIdentifier", "wyear", "YearCollected", "MonthCollected", "DayCollected"))
 #Observation Counts will be backfilled with a 0 whenever it is NA
     dat$ObservationCount[is.na(dat$ObservationCount)]<-0
-    
+    dat$SpeciesCode<-sp.list[i]
+
+#remove extreme outliers 
+    outlier<-(quantile(dat$ObservationCount, probs = c(0.99)))*3
+    dat<-dat %>% filter(ObservationCount<outlier)
+        
 #Remove SurveyAreaIdentifier from the data on where the sum of ObersevationCount is 0 across all years
 #If a species was never detected on a route, we will not include that route in the species specific analysis
 #This is considered out of range or in unsuitable habitat
     dat<-dat %>% group_by(SurveyAreaIdentifier) %>% filter(sum(ObservationCount)>0) %>% ungroup()
-    trends.csv$sample_size<-n_distinct(dat$SurveyAreaIdentifier) #assign number of routes to output table
+    routes<-n_distinct(dat$SurveyAreaIdentifier)
     
     # create date and day of year columns
     dat$date <- as.Date(paste(dat$YearCollected, dat$MonthCollected, 
@@ -55,25 +63,19 @@ if(site=="SalishSea"){
     #That the species was detected in at least 1/2 of the survey years
     #And that greater than a certain % of routes has non-zero counts
     
-    SpeciesMean<- dat %>% group_by(YearCollected) %>% summarize(YearMean = mean(ObservationCount)) %>% ungroup() %>% summarize(MeanMean = mean(YearMean))
-    SpeciesMean$NumYears <- n_distinct(sp.data$YearCollected)
+    SpeciesMean<- dat %>% group_by(YearCollected) %>% summarize(YearMean = sum(ObservationCount)) %>% ungroup() %>% summarize(MeanMean = mean(YearMean))
+    SpeciesMean$NumYears <- n_distinct(dat$YearCollected)
     
-    #calculate percent of SurveyAreaIdentifiers with zero counts
-    routestotal<-n_distinct(dat$SurveyAreaIdentifier)
-    routeszero<-dat %>% filter(ObservationCount==0) 
-    routesnotzero<-n_distinct(routeszero$SurveyAreaIdentifier)
-    SpeciesMean$ZeroRoutes<-(routestotal-routesnotzero)/routestotal
-
     #Now cheek the SpeciesMean object to see if the species meets the minimum data requirements 
     #all the variable must be large than the values min.abundance, min.years, zero.count, if TRUE continue with the analysis
     
-    if(SpeciesMean$MeanMean>=min.abundance & SpeciesMean$NumYears>=min.years & SpeciesMean$ZeroRoutes<=zero.count){
+    if(SpeciesMean$MeanMean>=min.abundance & SpeciesMean$NumYears>=min.years & routes>nroutes){
   min.data <- TRUE 
       }else{
   min.data <- FALSE
     }
 
-    print(min.data)
+    print(paste(sp.list[i], min.data))
     
     #only continue if the species meets the minimum data requirements      
 if(min.data==TRUE){
@@ -112,7 +114,7 @@ if(min.data==TRUE){
       f(kappa, model="iid", hyper=hyper.iid) + f(year_idx, model = "ar1", hyper=prec.prior) + 
       f(doy_idx, model = "ar1", hyper=prec.prior)
 
-    M0<-try(inla(formula, family = "nbinomial", data = dat, 
+    M0<-try(inla(formula, family = fam, data = dat, 
                  control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE), verbose =TRUE), silent = T)
     
 
@@ -129,7 +131,7 @@ if(min.data==TRUE){
     dispersion.csv$SpeciesCode<-sp.list[i]
     dispersion.csv$dispersion<-Dispersion1
     
-    write.table(dispersion.csv, file = paste(out.dir,  site, "DispersionStat",".csv", sep = ""),
+    write.table(dispersion.csv, file = paste(out.dir,  site, "_DispersionStat.csv", sep = ""),
                 col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
     
     dat$mu1<-mu1
@@ -139,7 +141,7 @@ if(min.data==TRUE){
       geom_abline(intercept = 0, slope = 1)
     
     # Save the plot with specified width, height, and dpi
-    ggsave(filename = paste(plot.dir, sp.list[i], "_FitPlot.jpeg", sep = ""), 
+    ggsave(filename = paste(plot.dir, site, sp.list[i], "_FitPlot.jpeg", sep = ""), 
            plot = q, 
            width = 8,    # Adjust width as needed
            height = 6,   # Adjust height as needed
@@ -172,7 +174,7 @@ if(min.data==TRUE){
        # Change legend lable
        scale_size_continuous(name = "Mean Observation Count")
 
-     ggsave(paste(plot.dir, sp.list[i], "_SumCountPlot.jpeg", sep = ""), plot = p, width = 10, height = 6, units = "in")
+     ggsave(paste(plot.dir, site, sp.list[i], "_SumCountPlot.jpeg", sep = ""), plot = p, width = 10, height = 6, units = "in")
 
 #create the datframe of covariates
 N<-nrow(dat)
@@ -244,7 +246,7 @@ N<-nrow(dat)
 
 
     #fit the non-spatial model using INLA
-    M1<-inla(formula.sp, family = "nbinomial", data = inla.stack.data(Stack),
+    M1<-inla(formula.sp, family = fam, data = inla.stack.data(Stack),
                     control.predictor = list(A=inla.stack.A(Stack)),
                     control.compute = list(dic=TRUE, waic=TRUE, config = TRUE),
                     verbose =TRUE)
@@ -303,7 +305,7 @@ trend_id="",
 smooth_upper_ci="",
 smooth_lower_ci="",
 upload_dt="",
-family="nbinomial",
+family=fam,
 results_code = "BCCWS+PSSS",
 version = "2025",
 season="Winter",
@@ -418,7 +420,7 @@ for(p in 1:length(time.period)) {
   trend.out<-NULL
   trend.out <- pred.ch %>%
     mutate(model_type="GLM DOY AR1 ALPHA+TAU SPATIAL", 
-           model_family = "nbinomial",
+           model_family = fam,
            years = paste(Y1, "-", Y2, sep = ""),
            year_start=Y1, 
            year_end=Y2,
@@ -525,6 +527,10 @@ for(p in 1:length(time.period)) {
               sep = ",", 
               col.names = FALSE)  
 
+  ####SVC Maps
+  ##https://inla.r-inla-download.org/r-inla.org/doc/vignettes/svc.html
+  
+  
       } #end period loop
     } #end min.data  
   }#end SpeciesLoop

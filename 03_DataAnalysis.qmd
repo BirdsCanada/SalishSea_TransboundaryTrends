@@ -17,7 +17,7 @@ Run setup if starting a new environment.
 
 source("00_Setup.R")
 
-#Manually Specify the start and end year of the analysis
+#Manually Specify the start and end year of the analysis. These years should match those selected for the data cleaning scripts. 
 Y1 = 2008
 Y2 = 2022
 
@@ -35,38 +35,65 @@ The basic model formula is as follows:
 Observation Count ~ DurationInHours + 
       f(kappa, model="iid", hyper=hyper.iid) + f(doy_idx, model = "ar1", hyper=prec.prior) 
     + f(alpha, model =spde)+ f(tau, model =spde)
+    
+Define your `site` as either "SalishSea", "BCCWS" or "PSSS".
        
 ```{r}
 
 #Load your saved species data 
 sp.data<-read.csv("Data/sp.data.csv")
+
 #Create a list of species
-sp.list<-unique(sp.data$SpeciesCode) 
-
-
-#remove manually remove species for the list
-#sp.list<-sp.list[sp.list!="NOFU"]
-#to restart the list if it crashes
-#sp.list<-sp.list[47:length(sp.list)]
+sp.list<-unique(sp.data$SpeciesCode)
+#manually select species
+#sp.list <- c("AMWI", "GRSC") 
 
 #Load your saved events data which is needed for zero-filling
 events<-read.csv("Data/events.csv")
 
-#Define your site. The option here are "SalishSea", "BCCWS" or "PSSS"
-site <- "BCCWS"
+#Define your site. 
+site <- "PSSS"
 
 #Create a data frame to store the results. 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 source("OutputTables.R")
 
-#Select the minimum data requirements for the analysis. The once selected here are consistent with Ethier et al. (2020). Specifically, (i.e., species with > 85% zero counts across all routes with at least one detection, species that had a mean abundance per year < 5, and species that were detected in fewer than one-half of the survey years). Users may choose to adjust these parameters. 
+#Select the minimum data requirements for the analysis. The ones selected here were done follwoing the inspection of the International data set and likely work both the National anlysis. However, finer scale assessment may need to assess their suitaprovides bility. 
 
-min.abundance <- 5
+#Across routes with at least one detection, each species needs an overall abundance per year > 10, need to be detected in > one-half of the survey years, and on > 10 survey routes). Users may choose to adjust these parameters. 
+
+min.abundance <- 50
 min.years <- (Y2-Y1)/2
-zero.count<-0.85
+nroutes <- 10
+
+#Set the distributional assumption. We will start with 'nbinomal' but may need to adjust this for some species if there is over dispersion. 
+
+fam<-'nbinomial'
+#fam<-'poisson'
 
 #Now we can initiate the analysis.  
 source("Analysis.R")
 
 ```
 
+Note that the Dispersion Statistic file in the Output folder should be reviewed after the analysis. If the statistic is > 10 you should inspect the FitPlots in the Plot directory. In this case we will want to rerun using a different distributional assumption on the counts. This can be done by manually changing the `fam` to Poission and selecting these species to be rerun. 
+
+**AMWI and GRSC manually removed due to poor model fit.
+
+#Plot the results to a pdf for inspection. You will find the outputs in your Output/Plot folder with the name site_IndexPlot.pdf
+
+```{r}
+
+source("PlotTrends.R")
+
+```
+      
+
+
+#check the sp.dat for PSSS. Plot the counts per year to check for outliers
+
+```{r}
+
+ggplot<-ggplot(sp.dat, aes(x=wyear, y=ObservationCount, color=SpeciesCode)) + geom_point() + facet_wrap(~SpeciesCode, scales="free_y") + theme_minimal() + theme(legend.position="none") + ggtitle("Counts per Year for PSSS") + theme(plot.title = element_text(hjust = 0.5))
+
+```
