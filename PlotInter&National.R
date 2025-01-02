@@ -20,7 +20,7 @@ all.trends <- all.trends[rowSums(is.na(all.trends)) < ncol(all.trends), ]
 all.trends<-all.trends %>% dplyr::select(area_code, period, species_code, species_id, years, trnd, lower_ci, upper_ci, index_type, percent_change) %>% filter(period=="all years")
 all.trends<-left_join(all.trends, sp.tax, by=c("species_id"="species_id"))
 
-end.trnd<-all.trends %>% filter(index_type=="Endpoint trend")
+end.trnd<-all.trends %>% filter(index_type==type)
 
 ed.trnd <- end.trnd %>%
   mutate(sp.trnd = paste(site.list[m], " ", round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
@@ -43,7 +43,7 @@ plot.dat<-rbind(SalishSea.plot, BCCWS.plot, PSSS.plot)
 test <- plot.dat %>% dplyr::select(species_id, area_code) %>% distinct() %>% 
   group_by(species_id) %>% summarise(n = n_distinct(area_code)) 
 plot.dat<-left_join(plot.dat, test, by=c("species_id"="species_id"))
-#if n=2 in plot.dat, filter the area_code to remove the SalishSea
+#if n=2 in plot.dat, filter the area_code to remove the Salish Sea
 plot.dat<-plot.dat %>% filter(!(area_code == "SalishSea" & n == 2))
 
 write.trn<-plot.dat %>% dplyr::select(species_id, sp.trnd) %>% distinct()
@@ -152,25 +152,23 @@ for(m in 1:length(site.list)){
 } #end site loop
 
 #Combine the plot_table into one using merge by period, species_code, species_id, years, sort_order, english_name
-
-
-##keep all missing data ##HERE
-table.dat<-merge(SalishSea.table, BCCWS.table, by=c("period", "species_code", "species_id", "years", "sort_order", "english_name"))
-table.dat<-merge(table.dat, PSSS.table, by=c("period", "species_code", "species_id", "years", "sort_order", "english_name"))  
+##keep all missing data 
+table.dat<-full_join(SalishSea.table, BCCWS.table, by=c("period", "species_code", "species_id", "years", "sort_order", "english_name"))
+table.dat<-full_join(table.dat, PSSS.table, by=c("period", "species_code", "species_id", "years", "sort_order", "english_name"))  
 
 #order columns so that PSSS, BCCWS and SalishSea are together 
-all.trnd<-all.trnd %>% mutate(
+all.trnd<-table.dat %>% dplyr::rename(
   `Common Name` = english_name,
   Years = years,
-  `Salish Sea Slope` = `trnd_SalishSea_Slope Trend`,
+  `Salish Sea Slope` = 'trnd_SalishSea_Slope Trend',
   `Salish Sea Slope LCI` = 'lower_ci_SalishSea_Slope Trend',
   `Salish Sea Slope UCI` = 'upper_ci_SalishSea_Slope Trend',
   `Salish Sea Slope % Change` = 'percent_change_SalishSea_Slope Trend',
-  `BCCWS Slope` = `trnd_BCCWS_Slope Trend`,
+  `BCCWS Slope` = 'trnd_BCCWS_Slope Trend',
   `BCCWS Slope LCI` = 'lower_ci_BCCWS_Slope Trend',
   `BCCWS Slope UCI` = 'upper_ci_BCCWS_Slope Trend',
   `BCCWS Slope % Change` = 'percent_change_BCCWS_Slope Trend',
-  `PSSS Slope` = `trnd_PSSS_Slope Trend`,
+  `PSSS Slope` = 'trnd_PSSS_Slope Trend',
   `PSSS Slope LCI` = 'lower_ci_PSSS_Slope Trend',
   `PSSS Slope UCI` = 'upper_ci_PSSS_Slope Trend',
   `PSSS Slope % Change` = 'percent_change_PSSS_Slope Trend',
@@ -186,4 +184,12 @@ all.trnd<-all.trnd %>% mutate(
   `PSSS Endpoint LCI` = 'lower_ci_PSSS_Endpoint trend',
   `PSSS Endpoint UCI` = 'upper_ci_PSSS_Endpoint trend',
   `PSSS Endpoint % Change` = 'percent_change_PSSS_Endpoint trend') %>% 
-  dplyr::select(-sort_order, -species_code, -period)
+  arrange(desc(sort_order)) %>% 
+  dplyr::select(-sort_order, -species_code, -period) %>% 
+  dplyr::select(`Common Name`, species_id, Years, `Salish Sea Slope`, `Salish Sea Slope LCI`, `Salish Sea Slope UCI`, `Salish Sea Slope % Change`, `Salish Sea Endpoint`, `Salish Sea Endpoint LCI`, `Salish Sea Endpoint UCI`, `Salish Sea Endpoint % Change`, `BCCWS Slope`, `BCCWS Slope LCI`, `BCCWS Slope UCI`, `BCCWS Slope % Change`, `BCCWS Endpoint`, `BCCWS Endpoint LCI`, `BCCWS Endpoint UCI`, `BCCWS Endpoint % Change`, `PSSS Slope`, `PSSS Slope LCI`, `PSSS Slope UCI`, `PSSS Slope % Change`, `PSSS Endpoint`, `PSSS Endpoint LCI`, `PSSS Endpoint UCI`, `PSSS Endpoint % Change`)
+
+#format the dataframe so that there are only 2 significant digits
+all.trnd<-all.trnd %>% mutate(across(where(is.numeric), ~round(., 2)))
+
+#write the table to a .csv in the output folder
+write.csv(all.trnd, paste(out.dir, "Full_TrendTable.csv", sep=""), row.names = FALSE)

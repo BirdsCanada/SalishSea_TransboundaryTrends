@@ -263,4 +263,24 @@ nearest_indices <- st_nearest_feature(events_sf, salish_sea)
 # Assign the country names based on the nearest indices
 events_sf$Province <- salish_sea$name[nearest_indices]
 
+
+#read 2024_CW_watershed.shp file from the Data/Spatial subfolder
+watershed <- st_read("Data/Spatial/2024_CW_watershed.shp")
+#read CW_boundary_2024.shp file from the Data/Spatial subfolder
+boundary_watershed <- st_read("Data/Spatial/CW_boundary_2024.shp")
+#read kba.20241209051227.shp file from the Data/Spatial subfolder
+kba <- st_read("Data/Spatial/kba.20241209051227.shp")
+#read PECP_estuary_points_rank_2019_public.shp file from the Data/Spatial subfolder
+estuary_point <- st_read("Data/Spatial/PECP_estuary_points_rank_2019_public.shp")
+#read PECP_estuary_poly_rank_2019_PUBLIC.shp file from the Data/Spatial subfolder
+estuary_poly <- st_read("Data/Spatial/PECP_estuary_poly_rank_2019_PUBLIC.shp")
+
+#read the layers within the MidwinterAerialSeabirdSurveys.gdb file from the Data/Spatial subfolder
+midwinter <- st_layers("Data/Spatial/MidwinterAerialSeabirdSurveys.gdb")
+
+#read the layers within the PBHJV_Boundary_08092022.gdb file from the Data/Spatial subfolder
+pbhjv <- st_layers("Data/Spatial/PBHJV_Boundary_08092022.gdb")
+
+
+
 ```

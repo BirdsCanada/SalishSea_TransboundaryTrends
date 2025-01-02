@@ -1,14 +1,19 @@
 #To update the project versions and dependancies, run the following command 
 #renv::snapshot()
 
+options(timeout = 1200)
+
 #Create data folder and output folders in working directory
 if(!dir.exists("Data")) dir.create("Data")
+if(!dir.exists("Data/Spatial")) dir.create("Data/Spatial")
 if(!dir.exists("Output")) dir.create("Output")
 if(!dir.exists("Output/Plots")) dir.create("Output/Plots")
+
 
 #Assign directories
 out.dir <- "Output/"
 data.dir <- "Data/"
+spatial.dir <- "Data/Spatial/"
 plot.dir <- "Output/Plots/"
 
 #Load required libraries
@@ -42,11 +47,11 @@ calculate_duration <- function(start, end) {
 utm_crs <- paste0("EPSG:326", sprintf("%02d", 10))
 
 # 
-# epsg6703km <- paste(
-#   "+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5",
-#   "+lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83",
-#   "+units=km +no_defs"
-# )
+ epsg6703km <- paste(
+   "+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5",
+   "+lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83",
+   "+units=km +no_defs"
+ )
 
 ##LOESS function
 

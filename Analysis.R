@@ -110,11 +110,11 @@ if(min.data==TRUE){
     hyper.iid<-list(prec=list(prior="pc.prec", param=c(2,0.05)))
     inla.setOption(scale.model.default=TRUE)
     
-    formula<- ObservationCount ~ -1 + DurationInHours + 
+    formula<- ObservationCount ~ -1 + 
       f(kappa, model="iid", hyper=hyper.iid) + f(year_idx, model = "ar1", hyper=prec.prior) + 
       f(doy_idx, model = "ar1", hyper=prec.prior)
 
-    M0<-try(inla(formula, family = fam, data = dat, 
+    M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
                  control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE), verbose =TRUE), silent = T)
     
 
@@ -181,7 +181,7 @@ N<-nrow(dat)
 
     Covariates<- data.frame(
       Intercept=rep(1, N),
-      DurationInHours=dat$DurationInHours,
+      #DurationInHours=dat$DurationInHours,
       kappa = dat$kappa,
       #year_idx = dat$year_idx,
       doy_idx = dat$doy_idx
@@ -240,13 +240,13 @@ N<-nrow(dat)
       )
     )
     
-    formula.sp<- count ~ -1 + Intercept + DurationInHours + 
+    formula.sp<- count ~ -1 + Intercept 
       f(kappa, model="iid", hyper=hyper.iid) + f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
        
 
 
     #fit the non-spatial model using INLA
-    M1<-inla(formula.sp, family = fam, data = inla.stack.data(Stack),
+    M1<-inla(formula.sp, family = fam, data = inla.stack.data(Stack), offset = log(dat$DurationInHours),
                     control.predictor = list(A=inla.stack.A(Stack)),
                     control.compute = list(dic=TRUE, waic=TRUE, config = TRUE),
                     verbose =TRUE)
@@ -504,7 +504,7 @@ for(p in 1:length(time.period)) {
   m = as.vector((exp(m)-1)*100)
   
   #include slop output in new table
-  trend.out$index_type="Slope Trend"
+  trend.out$index_type="Slope trend"
   trend.out$trnd<-median(m, na.rm=TRUE)
   trend.out$lower_ci<-quantile(m, prob=0.025)
   trend.out$upper_ci<-quantile(m, prob=0.950)
@@ -527,10 +527,66 @@ for(p in 1:length(time.period)) {
               sep = ",", 
               col.names = FALSE)  
 
-  ####SVC Maps
-  ##https://inla.r-inla-download.org/r-inla.org/doc/vignettes/svc.html
-  
-  
+  # ####SVC Maps
+  # ##https://inla.r-inla-download.org/r-inla.org/doc/vignettes/svc.html
+  # 
+  # # get easting and northing limits
+  # xlim <- range(hull$loc[, 1])
+  # ylim <- range(hull$loc[, 2])
+  # grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 10) #10 km mapping grid
+  # 
+  # # make mesh projector to get model summaries from the mesh to the mapping grid
+  # mesh_proj <- inla.mesh.projector(
+  #   mesh,
+  #   xlim = xlim, ylim = ylim, dims = grd_dims)
+  #   
+  #   # pull data
+  #   kappa <- data.frame(
+  #     median = exp(res$summary.random$kappa$"0.5quant"),
+  #     range95 = exp(res$summary.random$kappa$"0.975quant") -
+  #       exp(res$summary.random$kappa$"0.025quant")
+  #   )
+  #  
+  #    alph <- data.frame(
+  #     median = exp(res$summary.random$alpha$"0.5quant"),
+  #     range95 = exp(res$summary.random$alpha$"0.975quant") -
+  #       exp(res$summary.random$alpha$"0.025quant")
+  #   )
+  #  
+  #   taus <- data.frame(
+  #     median = (exp(res$summary.random$tau$"0.5quant") - 1) * 100,
+  #     range95 = (exp(res$summary.random$tau$"0.975quant") -
+  #                  exp(res$summary.random$tau$"0.025quant")) * 100
+  #   )
+  #   
+  #   # loop to get estimates on a mapping grid
+  #   pred_grids <- lapply(
+  #     list(alpha = alph, tau = taus),
+  #     function(x) as.matrix(inla.mesh.project(mesh_proj, x))
+  #   )
+  # )
+  # 
+  # out_stk <- rast()
+  # for (j in 1:3) {
+  #   mean_j <- cbind(expand.grid(x = mesh_proj$x, y = mesh_proj$y),
+  #                   Z = c(matrix(pred_grids[[j]][, 1], grd_dims[1]))
+  #   )
+  #   mean_j <- rast(mean_j, crs = epsg6703km)
+  #   range95_j <- cbind(expand.grid(X = mesh_proj$x, Y = mesh_proj$y),
+  #                      Z = c(matrix(pred_grids[[j]][, 2], grd_dims[1]))
+  #   )
+  #   range95_j <- rast(range95_j, crs = epsg6703km)
+  #   out_j <- c(mean_j, range95_j)
+  #   terra::add(out_stk) <- out_j
+  # }
+  # names(out_stk) <- c(
+  #   "alpha_median", "alpha_range95", "epsilon_median",
+  #   "epsilon_range95", "tau_median", "tau_range95"
+  # )
+  # 
+  #  out_stk <- terra::mask(out_stk, states, touches = FALSE)
+  # 
+  # 
       } #end period loop
     } #end min.data  
   }#end SpeciesLoop

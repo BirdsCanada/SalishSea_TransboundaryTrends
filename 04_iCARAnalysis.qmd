@@ -1,0 +1,80 @@
+---
+title: "04_iCARAnalysis"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+# Data Analysis - iCAR Trends
+
+## 4 Custom Regions
+
+The user may be interested in loading custom spatial data layers and running a models which calculates trends from each region separately. This can be done by loading a shapefile which you saved in the `Data/Spatial folder`. 
+
+```{r }
+
+#Load your saved events data 
+events<-read.csv("Data/events.csv")
+
+#Create a dataframe with a single row for each unique sampling point using DecimalLatitude and DecimalLongitude
+points<-events %>%  dplyr::select(DecimalLatitude, DecimalLongitude, ProjectCode) %>% distinct(DecimalLatitude, DecimalLongitude, .keep_all = TRUE)
+                                                                              
+#Specify the name of your shapefile
+#Coastal Watersheds US Only
+
+CW_watershed <- st_read("Data/Spatial/2024_CW_Watersheds.shp")
+#determine the CRS of the shapefile
+shp_crs<-st_crs(CW_watershed)
+
+CW_watershed <- CW_watershed %>%
+  filter(!is.na(NAME_12))
+#filter point for PSSS
+points.s<-points %>% filter(ProjectCode=="PSSS")
+
+ggplot(data = CW_watershed) +
+  geom_sf(aes(fill = NAME_12)) +  # Map fill color to NAME_12
+  geom_point(data = points.s, aes(x = DecimalLongitude, y = DecimalLatitude), color = "black", size = 1) +
+  scale_fill_discrete(name = "Watershed Name") +  # Optional: Customize legend title
+  theme_minimal() +  # Optional: Use a minimal theme
+   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
+    legend.position = "right"  # Optional: Position the legend
+  )
+
+#Make points into spatial data frame
+points.ss <- st_as_sf(points.s, coords = c("DecimalLongitude", "DecimalLatitude"), crs = shp_crs)
+
+#assign each point.s to the nearest watershed using the st_nearst_feature function
+nearest <- st_nearest_feature(points.ss, CW_watershed)
+points.s$watershed<-CW_watershed$NAME_12[nearest] 
+CW_watershed<-CW_watershed %>% filter(NAME_12 %in% unique(points.s$watershed))
+
+ggplot(data = CW_watershed) +
+  geom_sf(aes(fill = NAME_12)) +  # Map fill color to NAME_12
+  geom_point(data = points.s, aes(x = DecimalLongitude, y = DecimalLatitude), color = "black", size = 1) +
+  scale_fill_discrete(name = "Watershed Name") +  # Optional: Customize legend title
+  theme_minimal() +  # Optional: Use a minimal theme
+   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
+    legend.position = "right"  # Optional: Position the legend
+  )
+
+
+#Open the Midwinter Aerial Survey geodatabase
+
+#specify path
+path <- "Data/Spatial/MidwinterAerialSeabirdSurveys.gdb"
+layers <- "PSEMP_Analysis_Strata"
+gdb_data <- st_read(path, layer = layers)
+shp_crs<-st_crs(gdb_data)
+
+#specify path
+path <- "Data/Spatial/PBHJV_Boundary.gdb"
+layers <- "PBHJV_Boundary_08092022"
+gdb_data <- st_read(path, layer = layers)
+shp_crs<-st_crs(gdb_data)
+
+
+
+
+
+```
