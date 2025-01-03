@@ -83,7 +83,9 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   in.BCCWS <- in.BCCWS %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude))
   #Filter events to 45.06N to 50.64N latitude and 125.07W to 115.15W longitude
   in.BCCWS <- in.BCCWS %>% filter(DecimalLatitude >= 45.06 & DecimalLatitude <= 50.64 & DecimalLongitude >= -125.07 & DecimalLongitude <= -115.15)
- 
+  #remove the sampling point on the outside coastal edge of Vaconcover Isannd which in <-124 DecimialLongitude and <48.5 DecimialLatitude
+  in.BCCWS <- in.BCCWS %>% filter(!(DecimalLatitude < 48.5 & DecimalLongitude < -124))
+  
   #Filter Duration in hours greater than 0.3 and less than 10
   in.BCCWS<-in.BCCWS[in.BCCWS$DurationInHours > 0.3 & in.BCCWS$DurationInHours < 10,]
   

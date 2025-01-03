@@ -146,7 +146,7 @@ write.csv(events, "Data/events.csv", row.names = FALSE)
 
 ## 4. Species Selection
 
-Not all species will be included in an analysis. Some species are detected to infrequently to be included or they may not be species of focus for your study area. For example, you may wish to manually create a species list or you can set minimum data requirements for species to be included in the analysis. 
+Not all species will be included in an analysis. Some species are detected to infrequently to be included or they may not be species of focus for your study area. For example, you may wish to manually create a species list or you can set minimum data requirements for species to be included in the analysis.
 
 To manually create your list, you can use the 4 letter species codes. For example, to include the species: Surf Scoter (SUSC), Long-tailed Duck (LTDU), and Buffelhead (BUFF), you would create a list as follows:
 
@@ -164,7 +164,7 @@ write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
 
 Here we select species that are detected by both surveys. In the analysis script we will set some minumum data requirements to remove species that do not have enough data to estimate trends.
 
-```{r} 
+```{r}
 
 #Determine which SpeciesCode each ProjectCode share in the full dataset
 sp.bsss<-in.data %>% filter(ProjectCode == "BCCWS") %>% dplyr::select(SpeciesCode) %>% distinct()
@@ -183,7 +183,7 @@ write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
 
 ## 5. Sampling Events Plot
 
-Now we will plot the distribution of sampling events over the extent of the Salish Sea. This will be facets by year (wyear) so that changes in sampling effort can be spatailly visualized. Each survey program will be given a different colout. 
+Now we will plot the distribution of sampling events over the extent of the Salish Sea. This will be facets by year (wyear) so that changes in sampling effort can be spatailly visualized. Each survey program will be given a different colout.
 
 ```{r}
 
@@ -233,12 +233,11 @@ ggplot(data = all.data) +
 
 #the relationship for a lot of species looks non-linear. There are diminishing returns to survey duration. We therefore suggest that this is modeled as a covarite in the model and not an offset. 
 
-```    
+```
 
+## 7. Spatial Data
 
-## 7. Spatial Data    
-
-When deriving population trends, we are often interesting in doing this for specific geographic areas of interest. These could be management units or areas of conservation concern. Here we will create a spatial object that represents the Salish Sea and its subregions: Country. 
+When deriving population trends, we are often interesting in doing this for specific geographic areas of interest. These could be management units or areas of conservation concern. Here we will create a spatial object that represents the Salish Sea and its subregions: Country.
 
 Spatial units are also used in the iCAR model to account for spatial autocorrelation in the data and to estimate the spatial structure of the population trends.
 

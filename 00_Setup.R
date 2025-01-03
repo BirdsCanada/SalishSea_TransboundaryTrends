@@ -27,7 +27,7 @@ plot.dir <- "Output/Plots/"
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
                  exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
-                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, maps, splancs)
+                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, maps, splancs, spdep, igraph) 
 
 # Function to calculate duration in hours
 calculate_duration <- function(start, end) {

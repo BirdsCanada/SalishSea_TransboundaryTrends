@@ -6,9 +6,11 @@ editor_options:
   chunk_output_type: console
 ---
 
-# Data Analysis - iCAR Trends
+# Data Analysis - iCAR 
 
-The iCAR analysis is suitable if you are interested deriving trends for distinct polygons that segregate your study area. These can be irregular polygons or a grid of polygons that the user selects to overlay the study area. In the case of the Salish Sea, there are different units that may be appropriate for difference resources managers. 
+The Intrinsic Conditional Autoregressive (iCAR) analysis is suitable if you are interested deriving outputs for distinct polygons that segregate your study area. These can be irregular polygons (e.g., states, provinces, counties, watersheds) or a regular grid of polygons that the user selects to overlay on the study area.
+
+For this analysis we provide two examples of how to load custom spatial data layers and run a models which calculate trends and indices of abundance for each region separately using an Intrinsic Conditional Autoregressive (iCAR) framework.
 
 Run setup if starting a new environment.
 
@@ -21,10 +23,13 @@ Y1 = 2008
 Y2 = 2022
 ```
 
-
 ## 4 Custom Regions
 
-The user may be interested in loading custom spatial data layers and running a models which calculates trends from each region separately. This can be done by loading a .shp or .gbd which you saved in the `Data/Spatial folder`. Because there are many alternatives we will demonstrate how to do this with a layer of land segments containing distinct watersheds in the Puget Sound region of the Salish Sea provided by the Pacific Bird Habitat Joint Venture
+The user may be interested in loading custom spatial data layers and running a models which calculates trends and annual indices of abundance for each region separately. This can be done by loading a .shp or .gbd which you saved in the `Data/Spatial` folder. 
+
+Because there are many alternatives we will demonstrate how to do this with a layer containing distinct basins in the Puget Sound region of the Salish Sea. These are the same basins used by the Midwinter Aerial Bird Survey Salish Sea Basins and can be freely downloaded from the Washington Department of Fish and Wildlife (website)[https://data-wdfw.opendata.arcgis.com/documents/0d57403ea9eb45b7a8acabf3dd58c7b0/about]. Save this .gdb to the `Data/Spatial` folder for processing here.  
+
+### 4.1 Load and Prepare Spatial Data
 
 ```{r }
 
@@ -33,84 +38,114 @@ events<-read.csv("Data/events.csv")
 
 #Create a dataframe with a single row for each unique sampling point using DecimalLatitude and DecimalLongitude
 points<-events %>%  dplyr::select(DecimalLatitude, DecimalLongitude, ProjectCode) %>% distinct(DecimalLatitude, DecimalLongitude, .keep_all = TRUE)
-                                                                              
-#Specify the name of your shapefile
 
+#Filter points for PSSS for this example
+points<-points %>% filter(ProjectCode=="PSSS")
+#Create an sf object and assign the correct crs
+points_sf <- st_as_sf(points, coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326)  
+                                                                        
+#Open the Midwinter Aerial Survey geodatabas
 
-#############################################################
-#Coastal Watersheds US Only
-
-CW_watershed <- st_read("Data/Spatial/2024_CW_Watersheds.shp")
-#determine the CRS of the shapefile
-shp_crs<-st_crs(CW_watershed)
-
-CW_watershed <- CW_watershed %>%
-  filter(!is.na(NAME_12))
-#filter point for PSSS
-points.s<-points %>% filter(ProjectCode=="PSSS")
-
-#Make points into spatial data frame
-points.ss <- st_as_sf(points.s, coords = c("DecimalLongitude", "DecimalLatitude"), crs = shp_crs)
-
-#assign each point.s to the nearest watershed using the st_nearst_feature function
-nearest <- st_nearest_feature(points.ss, CW_watershed)
-points.s$watershed<-CW_watershed$NAME_12[nearest] 
-CW_watershed<-CW_watershed %>% filter(NAME_12 %in% unique(points.s$watershed))
-
-ggplot(data = CW_watershed) +
-  geom_sf(aes(fill = NAME_12)) +  # Map fill color to NAME_12
-  geom_point(data = points.s, aes(x = DecimalLongitude, y = DecimalLatitude), color = "black", size = 1) +
-  labs(title = "Coastal Watersheds",
-       fill = "Watershed Name")  
-  theme_minimal() +  # Optional: Use a minimal theme
-   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
-    legend.position = "right"  # Optional: Position the legend
-  )
-
-###############################################################
-#Open the Midwinter Aerial Survey geodatabase
-
-#filter point for PSSS
-points.s<-points %>% filter(ProjectCode=="PSSS")
-points_sf <- st_as_sf(points.s, coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326)  
-
-#specify path
+#Specify path
 path <- "Data/Spatial/MidwinterAerialSeabirdSurveys.gdb"
+#Specify layers
 layers <- "PSEMP_Analysis_Strata"
+#Read data 
 psemp_data <- st_read(path, layer = layers)
-shp_crs<-st_crs(psemp_data)
 psemp_data$StrataID <- as.factor(psemp_data$StrataID)
 
-
-# Cast the geometry to MULTIPOLYGON
+#Cast the geometry to MULTIPOLYGON
 psemp_data$Shape <- st_cast(psemp_data$Shape, "MULTIPOLYGON")
 psemp_data <- st_make_valid(psemp_data)
 
-# Transform sample locations to NAD83 / UTM zone 10N
+#Transform sample location to same crs as polygons
 points_sf <- st_transform(points_sf, crs = st_crs(psemp_data))
 
-# Basic plot using ggplot2
-ggplot(data = psemp_data) +
+#Assign each sampling point to the nearest polygon using the st_nearst_feature function
+nearest <- st_nearest_feature(points_sf, psemp_data)
+points$Basin<-psemp_data$Basin[nearest] 
+#Filter the polygons to only include those with points
+psemp_data<-psemp_data %>% filter(Basin %in% unique(points$Basin))
+
+#Amalgamate the Stata into single polygons for each Basin
+basin <- psemp_data %>%
+  group_by(Basin) %>%  
+  summarize(geometry = st_union(Shape), .groups = 'drop')  
+
+#Map the point and polygon data
+ggplot(data = basin) +
   geom_sf(aes(fill = Basin)) + 
   geom_sf(data = points_sf, color="black", size = 1)+ 
   labs(title = "PSEMP Basins",
        fill = "Basin Name") +
   #theme_minimal() +  # Optional: Use a minimal theme
-   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
-    legend.position = "right"  # Optional: Position the legend
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
+        legend.position = "right"  # Optional: Position the legend
   )
 
-#assign each point.s to the nearest watershed using the st_nearst_feature function
-nearest <- st_nearest_feature(points_sf, psemp_data)
-points.s$Basin<-psemp_data$Basin[nearest] 
-psemp_data<-psemp_data %>% filter(Basin %in% unique(points.s$Basin))
+#Create the adjacency matrix for the iCAR analysis
+nb1 <- spdep::poly2nb(basin, row.names=basin$Basin); nb1
 
-###################################################
-#Canada Coastal Marine Emergency Planning
+# Neighbour list object:
+# Number of regions: 8 
+# Number of nonzero links: 18 
+# Percentage nonzero weights: 28.125 
+# Average number of links: 2.25
 
-#read in the shapefile
-canada <- st_read("Data/Spatial/UpdatesAreaPlanLayers.shp")
+is.symmetric.nb(nb1, verbose = FALSE, force = TRUE)
+nb2INLA("nb1.graph", nb1)
+nb1.adj <- paste(getwd(),"/nb1.graph", sep="")
+g1 <- inla.read.graph("nb1.graph")
 
+```
+
+### 4.2 Load and Prepare Data
+
+```{r}
+
+#Define your `site` as either "SalishSea", "BCCWS" or "PSSS".
+site <- "PSSS"
+
+#Load your saved species data 
+sp.data<-read.csv("Data/sp.data.csv")
+
+#Create a list of species
+sp.list<-unique(sp.data$SpeciesCode)
+#Or you can manually select species
+#sp.list <- c("AMWI", "GRSC") 
+
+#Load your saved events data which is needed for zero-filling
+events<-read.csv("Data/events.csv")
+
+#Create a data frame to store the results. 
+#This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
+source("OutputTables2.R")
+
+#Select the minimum data requirements for the analysis. The ones selected here were done following the inspection of the International data set and likely work both the National analyses. However, finer scale assessment may need to assess their suitability. 
+
+#Here, the minimum data required across routes with at least one detection, each species needs an overall abundance per year > 10, need to be detected in > one-half of the survey years, and on > 10 survey routes. Users may choose to adjust these parameters. 
+
+min.abundance <- 10
+min.years <- (Y2-Y1)/2
+nroutes <- 10
+
+#Set the distributional assumption. Here we select 'nbinomal' but this may need to adjust if there is overdispersion. 
+
+fam<-'nbinomial'
+#fam<-'poisson'
+
+```
+
+### 3.2 Run the Analysis and Plot Output
+
+```{r}
+
+#Now we can initiate the analysis.  
+source("Analysis2.R")
+
+#Plot the results to a pdf for inspection. 
+#You will find the outputs in your Output/Plot folder with the name site_IndexPlot.pdf
+source("PlotTrends2.R")
 
 
 ```
