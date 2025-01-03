@@ -8,9 +8,23 @@ editor_options:
 
 # Data Analysis - iCAR Trends
 
+The iCAR analysis is suitable if you are interested deriving trends for distinct polygons that segregate your study area. These can be irregular polygons or a grid of polygons that the user selects to overlay the study area. In the case of the Salish Sea, there are different units that may be appropriate for difference resources managers. 
+
+Run setup if starting a new environment.
+
+```{r}
+
+source("00_Setup.R")
+
+#Manually Specify the start and end year of the analysis. These years should match those selected for the data cleaning scripts. 
+Y1 = 2008
+Y2 = 2022
+```
+
+
 ## 4 Custom Regions
 
-The user may be interested in loading custom spatial data layers and running a models which calculates trends from each region separately. This can be done by loading a shapefile which you saved in the `Data/Spatial folder`. 
+The user may be interested in loading custom spatial data layers and running a models which calculates trends from each region separately. This can be done by loading a .shp or .gbd which you saved in the `Data/Spatial folder`. Because there are many alternatives we will demonstrate how to do this with a layer of land segments containing distinct watersheds in the Puget Sound region of the Salish Sea provided by the Pacific Bird Habitat Joint Venture
 
 ```{r }
 
@@ -21,6 +35,9 @@ events<-read.csv("Data/events.csv")
 points<-events %>%  dplyr::select(DecimalLatitude, DecimalLongitude, ProjectCode) %>% distinct(DecimalLatitude, DecimalLongitude, .keep_all = TRUE)
                                                                               
 #Specify the name of your shapefile
+
+
+#############################################################
 #Coastal Watersheds US Only
 
 CW_watershed <- st_read("Data/Spatial/2024_CW_Watersheds.shp")
@@ -31,15 +48,6 @@ CW_watershed <- CW_watershed %>%
   filter(!is.na(NAME_12))
 #filter point for PSSS
 points.s<-points %>% filter(ProjectCode=="PSSS")
-
-ggplot(data = CW_watershed) +
-  geom_sf(aes(fill = NAME_12)) +  # Map fill color to NAME_12
-  geom_point(data = points.s, aes(x = DecimalLongitude, y = DecimalLatitude), color = "black", size = 1) +
-  scale_fill_discrete(name = "Watershed Name") +  # Optional: Customize legend title
-  theme_minimal() +  # Optional: Use a minimal theme
-   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
-    legend.position = "right"  # Optional: Position the legend
-  )
 
 #Make points into spatial data frame
 points.ss <- st_as_sf(points.s, coords = c("DecimalLongitude", "DecimalLatitude"), crs = shp_crs)
@@ -52,28 +60,56 @@ CW_watershed<-CW_watershed %>% filter(NAME_12 %in% unique(points.s$watershed))
 ggplot(data = CW_watershed) +
   geom_sf(aes(fill = NAME_12)) +  # Map fill color to NAME_12
   geom_point(data = points.s, aes(x = DecimalLongitude, y = DecimalLatitude), color = "black", size = 1) +
-  scale_fill_discrete(name = "Watershed Name") +  # Optional: Customize legend title
+  labs(title = "Coastal Watersheds",
+       fill = "Watershed Name")  
   theme_minimal() +  # Optional: Use a minimal theme
    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
     legend.position = "right"  # Optional: Position the legend
   )
 
-
+###############################################################
 #Open the Midwinter Aerial Survey geodatabase
+
+#filter point for PSSS
+points.s<-points %>% filter(ProjectCode=="PSSS")
+points_sf <- st_as_sf(points.s, coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326)  
 
 #specify path
 path <- "Data/Spatial/MidwinterAerialSeabirdSurveys.gdb"
 layers <- "PSEMP_Analysis_Strata"
-gdb_data <- st_read(path, layer = layers)
-shp_crs<-st_crs(gdb_data)
-
-#specify path
-path <- "Data/Spatial/PBHJV_Boundary.gdb"
-layers <- "PBHJV_Boundary_08092022"
-gdb_data <- st_read(path, layer = layers)
-shp_crs<-st_crs(gdb_data)
+psemp_data <- st_read(path, layer = layers)
+shp_crs<-st_crs(psemp_data)
+psemp_data$StrataID <- as.factor(psemp_data$StrataID)
 
 
+# Cast the geometry to MULTIPOLYGON
+psemp_data$Shape <- st_cast(psemp_data$Shape, "MULTIPOLYGON")
+psemp_data <- st_make_valid(psemp_data)
+
+# Transform sample locations to NAD83 / UTM zone 10N
+points_sf <- st_transform(points_sf, crs = st_crs(psemp_data))
+
+# Basic plot using ggplot2
+ggplot(data = psemp_data) +
+  geom_sf(aes(fill = Basin)) + 
+  geom_sf(data = points_sf, color="black", size = 1)+ 
+  labs(title = "PSEMP Basins",
+       fill = "Basin Name") +
+  #theme_minimal() +  # Optional: Use a minimal theme
+   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
+    legend.position = "right"  # Optional: Position the legend
+  )
+
+#assign each point.s to the nearest watershed using the st_nearst_feature function
+nearest <- st_nearest_feature(points_sf, psemp_data)
+points.s$Basin<-psemp_data$Basin[nearest] 
+psemp_data<-psemp_data %>% filter(Basin %in% unique(points.s$Basin))
+
+###################################################
+#Canada Coastal Marine Emergency Planning
+
+#read in the shapefile
+canada <- st_read("Data/Spatial/UpdatesAreaPlanLayers.shp")
 
 
 
