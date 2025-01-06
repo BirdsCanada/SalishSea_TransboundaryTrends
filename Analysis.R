@@ -97,12 +97,16 @@ if(min.data==TRUE){
       kappa = as.integer(factor(dat$SurveyAreaIdentifier)),
       year_idx = as.integer(wyear),
       doy_idx = as.integer(doy))%>%
-      st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE)
+      st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE) 
+      # st_transform(epsg6703km) %>%
+      #   mutate(
+      #     easting = st_coordinates(.)[, 1],
+      #     northing = st_coordinates(.)[, 2]) %>%
     
-    dat <- st_transform(dat, crs = utm_crs) %>% 
+      dat <- st_transform(dat, crs = utm_crs) %>%
       mutate(
         easting = st_coordinates(.)[, 1]/1000,
-        northing = st_coordinates(.)[, 2]/1000) %>% 
+        northing = st_coordinates(.)[, 2]/1000) %>%
       arrange(SurveyAreaIdentifier, wyear)
   
     #Set prior for the random effects
@@ -240,7 +244,7 @@ N<-nrow(dat)
       )
     )
     
-    formula.sp<- count ~ -1 + Intercept 
+    formula.sp<- count ~ -1 + Intercept +
       f(kappa, model="iid", hyper=hyper.iid) + f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
        
 
@@ -338,10 +342,18 @@ rev.years<-rev(list.years)
 #Generate all-years, 10 years, 20 years and 3 generation length.
 
 #Fetch the generation length from the NatureCounts Database
-gen_years <- nc_query_table(table = "SpeciesLifeHistory") %>%
+
+##Temp fix
+gen_years <- read.csv("Data/SpeciesLifeHistory.csv")
+gen_years<-gen_years %>% 
   filter(subcategDescr == "Average generation length (years)") %>% 
   filter(speciesID == sp.id) %>% pull(value) %>% as.numeric()
 gen.length <- round(gen_years  *  3)
+
+ # gen_years <- nc_query_table(table = "SpeciesLifeHistory") %>%
+ # filter(subcategDescr == "Average generation length (years)") %>%
+ # filter(speciesID == sp.id) %>% pull(value) %>% as.numeric()
+ # gen.length <- round(gen_years  *  3)
 
 if(length(gen.length)>0){
   gen.length<-min(gen.length)
@@ -527,66 +539,136 @@ for(p in 1:length(time.period)) {
               sep = ",", 
               col.names = FALSE)  
 
-  # ####SVC Maps
-  # ##https://inla.r-inla-download.org/r-inla.org/doc/vignettes/svc.html
-  # 
-  # # get easting and northing limits
-  # xlim <- range(hull$loc[, 1])
-  # ylim <- range(hull$loc[, 2])
-  # grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 10) #10 km mapping grid
-  # 
-  # # make mesh projector to get model summaries from the mesh to the mapping grid
-  # mesh_proj <- inla.mesh.projector(
-  #   mesh,
-  #   xlim = xlim, ylim = ylim, dims = grd_dims)
-  #   
-  #   # pull data
-  #   kappa <- data.frame(
-  #     median = exp(res$summary.random$kappa$"0.5quant"),
-  #     range95 = exp(res$summary.random$kappa$"0.975quant") -
-  #       exp(res$summary.random$kappa$"0.025quant")
-  #   )
-  #  
-  #    alph <- data.frame(
-  #     median = exp(res$summary.random$alpha$"0.5quant"),
-  #     range95 = exp(res$summary.random$alpha$"0.975quant") -
-  #       exp(res$summary.random$alpha$"0.025quant")
-  #   )
-  #  
-  #   taus <- data.frame(
-  #     median = (exp(res$summary.random$tau$"0.5quant") - 1) * 100,
-  #     range95 = (exp(res$summary.random$tau$"0.975quant") -
-  #                  exp(res$summary.random$tau$"0.025quant")) * 100
-  #   )
-  #   
-  #   # loop to get estimates on a mapping grid
-  #   pred_grids <- lapply(
-  #     list(alpha = alph, tau = taus),
-  #     function(x) as.matrix(inla.mesh.project(mesh_proj, x))
-  #   )
-  # )
-  # 
-  # out_stk <- rast()
-  # for (j in 1:3) {
-  #   mean_j <- cbind(expand.grid(x = mesh_proj$x, y = mesh_proj$y),
-  #                   Z = c(matrix(pred_grids[[j]][, 1], grd_dims[1]))
-  #   )
-  #   mean_j <- rast(mean_j, crs = epsg6703km)
-  #   range95_j <- cbind(expand.grid(X = mesh_proj$x, Y = mesh_proj$y),
-  #                      Z = c(matrix(pred_grids[[j]][, 2], grd_dims[1]))
-  #   )
-  #   range95_j <- rast(range95_j, crs = epsg6703km)
-  #   out_j <- c(mean_j, range95_j)
-  #   terra::add(out_stk) <- out_j
-  # }
-  # names(out_stk) <- c(
-  #   "alpha_median", "alpha_range95", "epsilon_median",
-  #   "epsilon_range95", "tau_median", "tau_range95"
-  # )
-  # 
-  #  out_stk <- terra::mask(out_stk, states, touches = FALSE)
-  # 
-  # 
+  ####SVC Maps
+  ##https://inla.r-inla-download.org/r-inla.org/doc/vignettes/svc.html
+
+  # get easting and northing limits
+  xlim <- range(Bound$loc[, 1])
+  ylim <- range(Bound$loc[, 2])
+  grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 10) #10 km mapping grid
+
+  # make mesh projector to get model summaries from the mesh to the mapping grid
+  mesh_proj <- inla.mesh.projector(
+    mesh2,
+    xlim = xlim, ylim = ylim, dims = grd_dims)
+
+    # pull data
+    kappa <- data.frame(
+      median = exp(M1$summary.random$kappa$"0.5quant"),
+      range95 = exp(M1$summary.random$kappa$"0.975quant") -
+        exp(M1$summary.random$kappa$"0.025quant")
+    )
+
+     alph <- data.frame(
+      median = exp(M1$summary.random$alpha$"0.5quant"),
+      range95 = exp(M1$summary.random$alpha$"0.975quant") -
+        exp(M1$summary.random$alpha$"0.025quant")
+    )
+
+    taus <- data.frame(
+      median = (exp(M1$summary.random$tau$"0.5quant") - 1) * 100,
+      range95 = (exp(M1$summary.random$tau$"0.975quant") -
+                   exp(M1$summary.random$tau$"0.025quant")) * 100
+    )
+
+    # loop to get estimates on a mapping grid
+    pred_grids <- lapply(
+      list(alpha = alph, tau = taus),
+      function(x) as.matrix(inla.mesh.project(mesh_proj, x))
+    )
+  
+    # make a terra raster stack with the posterior median and range95
+    out_stk<-NULL
+    out_stk <- rast()
+    for (j in 1:2) {
+      mean_j <- cbind(expand.grid(x = mesh_proj$x, y = mesh_proj$y),
+                      Z = c(matrix(pred_grids[[j]][, 1], grd_dims[1]))
+      )
+      mean_j <- rast(mean_j, crs = epsg6703km)
+      range95_j <- cbind(expand.grid(X = mesh_proj$x, Y = mesh_proj$y),
+                         Z = c(matrix(pred_grids[[j]][, 2], grd_dims[1]))
+      )
+      range95_j <- rast(range95_j, crs = epsg6703km)
+      out_j <- c(mean_j, range95_j)
+      terra::add(out_stk) <- out_j
+    }
+    
+    names(out_stk) <- c("alpha_median", "alpha_range95", "tau_median", "tau_range95")
+    
+    #load backgroud maps (or maps)
+    if(site=="BCCWS"){
+    
+    canada <- ne_states(country = "canada", returnclass = "sf") 
+    map<- canada[canada$name=="British Columbia",]
+    }
+    
+    if(site=="PSSS"){
+    us<- ne_states(country = "united states of america", returnclass = "sf") 
+    map<- us[us$name=="Washington",]
+    }
+  
+    if(site=="SalishSea"){
+    canada <- ne_states(country = "canada", returnclass = "sf") 
+    BC<- canada[canada$name=="British Columbia",]
+    
+    us<- ne_states(country = "united states of america", returnclass = "sf") 
+    WA<- us[us$name=="Washington",]
+    
+    map <- rbind(BC, WA)
+    }
+    
+    #change the crs of map to epsg6703km
+    map <- st_transform(map, crs = epsg6703km)
+    
+    out_stk <- terra::mask(out_stk, map, touches = FALSE)
+    
+    # medians
+    # fields alpha_s, tau_s
+    pa <- make_plot_field(
+      data_stk = out_stk[["alpha_median"]],
+      scale_label = "posterior\nmedian\nalpha"
+    )
+    
+    pt <- make_plot_field(
+      data_stk = out_stk[["tau_median"]],
+      scale_label = "posterior\nmedian\ntau"
+    )
+    # sites kappa_s
+    ps <- make_plot_site(
+      data = cbind(site_map, data.frame(value = kappa$median)),
+      scale_label = "posterior\nmedian\nkappa"
+    )
+    # range95
+    # fields alpha_s, tau_s
+    pa_range95 <- make_plot_field(
+      data_stk = out_stk[["alpha_range95"]],
+      scale_label = "posterior\nrange95\nexp(alpha_s)"
+    )
+    
+    pt_range95 <- make_plot_field(
+      data_stk = out_stk[["tau_range95"]],
+      scale_label = "posterior\nrange95\n100(exp(tau_s)-1)"
+    )
+    
+    # sites kappa_s
+    ps_range95 <- make_plot_site(
+      data = cbind(site_map, data.frame(value = kappa$range95)),
+      scale_label = "posterior\nrange95\nexp(kappa_s)"
+    )
+    
+    # plot together
+    #multiplot(ps, pa, pt, cols = 2)
+    
+    # plot together
+    #multiplot(ps_range95, pa_range95, pt_range95, cols = 2)
+    
+    # plot together
+    multiplot(ps, pa, pt, ps_range95, pa_range95, pt_range95, cols = 2)
+    
+    pdf(paste(out.dir, sp.list[m], "_spdePlot.pdf", sep=""))
+    multiplot(pa, pt)
+    while(!is.null(dev.list())) dev.off()
+
       } #end period loop
     } #end min.data  
   }#end SpeciesLoop

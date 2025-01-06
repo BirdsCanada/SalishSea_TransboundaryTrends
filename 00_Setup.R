@@ -27,7 +27,8 @@ plot.dir <- "Output/Plots/"
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
                  exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
-                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, maps, splancs, spdep, igraph) 
+                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, 
+                 maps, splancs, spdep, igraph, ggspatial, terra, tidyterra) 
 
 # Function to calculate duration in hours
 calculate_duration <- function(start, end) {
@@ -46,7 +47,7 @@ calculate_duration <- function(start, end) {
 
 utm_crs <- paste0("EPSG:326", sprintf("%02d", 10))
 
-# 
+
  epsg6703km <- paste(
    "+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5",
    "+lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83",
@@ -61,3 +62,44 @@ loess_func <- function(i,y){
   preds <- predict(tmp)
   return(preds)
 }
+
+##-----------------------------------------------------------
+#Create plot functions
+
+make_plot_field <- function(data_stk, scale_label) {
+  ggplot() +
+    geom_sf(data = map, fill = NA) +
+    #annotation_map_tile(type = "osm", zoomin = 0) +
+    geom_sf(fill = NA) +
+    coord_sf(datum = NA) +
+    geom_spatraster(data = as.data.frame(data_stk)) +
+    labs(x = "", y = "") +
+    scale_fill_gradient2(low = ("red4"),
+                        mid = "white",
+                         high = ("royalblue4"), midpoint = 0, space = "Lab",
+                         guide = "colourbar") +
+    #scale_fill_viridis(option="magma", scale_label, na.value="transparent")+
+    #scale_fill_distiller(scale_label, palette = "Blue-Red", na.value = "transparent") +
+    theme_bw() +
+    geom_sf(fill = NA)
+}
+
+make_plot_site <- function(data, scale_label) {
+  ggplot() +
+    geom_sf(data = map, fill = NA) +
+    #annotation_map_tile(type = "osm", zoomin = 0) +
+    geom_sf() +
+    coord_sf(datum = NA) +
+    geom_sf(data = data, size = 5, mapping = aes(colour = value, geometry=geometry)) +
+    labs(x = "", y = "") +
+    scale_fill_gradient2(low = ("red4"),
+                         mid = "white",
+                         high = ("royalblue4"), midpoint = 0, space = "Lab",
+                         guide = "colourbar") +
+    #scale_colour_viridis(option="magma", scale_label, na.value="transparent")+
+    #scale_colour_distiller(scale_label, palette = "Blue-Red", na.value = "transparent") +
+    theme_bw() +
+    geom_sf(fill = NA)
+}
+
+

@@ -6,7 +6,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# Data Analysis - SPDE 
+# Data Analysis - SPDE
 
 ## 3 International and National Assessments
 
@@ -89,8 +89,7 @@ Note that the Dispersion Statistic file in the Output folder should be reviewed 
 
 \*\*AMWI and GRSC manually removed from the International outputs due to poor model fit.
 
-### 3.3 Combine and Plot Results 
-
+### 3.3 Combine and Plot Results
 
 If you have run the analysis for all three regions (SalishSea, BCCWS, PSSS) you can now combine the results into a single plot and table for review.
 
