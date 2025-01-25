@@ -13,6 +13,13 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   
   in.BCCWS$ObservationCount<-as.numeric(in.BCCWS$ObservationCount3)  ##WILLL WANT TO KEEP JUST THE NEARSHORE DATA TO MAKE THIS COMPARABLE TO PSSS
   
+  sp.code<-sp.code %>% filter(authority=="BSCDATA") %>% dplyr::select(-authority, -species_id2, -rank) %>% distinct()
+  sp.tax<-sp.tax %>% dplyr::select(species_id, scientific_name, english_name) %>% distinct()
+  sp<-left_join(sp.code, sp.tax, by="species_id")
+  sp<-sp %>% distinct(english_name, .keep_all = TRUE)
+  
+  in.BCCWS<-merge(in.BCCWS, sp, by.x=c("CommonName"), by.y= ("english_name"), all.x=TRUE)
+  
   
   #Thayer's Gull missing SpeciesCode. Need to assign here species_id == 5190
   in.BCCWS$SpeciesCode<-as.character(in.BCCWS$SpeciesCode)
@@ -33,8 +40,8 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   in.BCCWS$form.id <- gsub("BCCWS-", "", in.BCCWS$SamplingEventIdentifier)
   in.BCCWS <- subset(in.BCCWS, form.id != 3794 & form.id != 5469 &
                        form.id != 5063 & form.id != 6945)
-    
-  # seems to be a few duplicate records in data file; this keeps only one
+  
+   # if there are duplicate records in data file; this keeps only one. I checked and there currently are not any. 
   in.BCCWS <- distinct(in.BCCWS)
   
   #create day of year column 
@@ -105,4 +112,6 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # write index.data to file
    write.csv(in.BCCWS, "Data/BCCWS.clean.csv")
    write.csv(event.BCCWS, "Data/BCCWS.events.csv")
+   
+  
    

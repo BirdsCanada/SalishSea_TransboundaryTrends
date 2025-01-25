@@ -3,7 +3,6 @@
 #Created by Danielle Ethier
 #December 2024
 
-
 in.PSSS <- read.csv("Data/PSSS.csv") # reads in back-up copy of database 
 
 in.PSSS$SpeciesCode<-as.factor(in.PSSS$SpeciesCode)
@@ -12,13 +11,13 @@ in.PSSS <- subset(in.PSSS, !is.na(SpeciesCode))
 # filter data by months October to April
 in.PSSS <- subset(in.PSSS, MonthCollected %in% c(10:12, 1:4))
 
-# if duplicate records in data file; this keeps only one
+# if duplicate records in data file; this keeps only one. There currently are no doublicates. 
 in.PSSS <- distinct(in.PSSS)
 
 #create day of year column 
 in.PSSS$doy <- as.numeric(format(as.Date(paste(in.PSSS$YearCollected, in.PSSS$MonthCollected, in.PSSS$DayCollected, sep="-")), "%j"))
 
-# keep only one survey per month by selecting the first survey if there are duplicates
+# keep only one survey per month by selecting the first survey if there are duplicates. There are currently none. 
 in.PSSS <- in.PSSS %>% group_by(SurveyAreaIdentifier, YearCollected, MonthCollected) %>% slice_min(doy) %>% ungroup()
 
 # create a new column called wyear, which groups surveys by winter year

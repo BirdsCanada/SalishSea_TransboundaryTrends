@@ -1,16 +1,5 @@
 
-library(naturecounts)
-library(tidyverse)
-library(stringr)
-library(reshape2)
-library(reshape)
-library(measurements)
-
-BMDE<-meta_bmde_fields("core")
-sp.code<-meta_species_codes()
 sp.code<-sp.code %>% filter(authority=="BSCDATA") %>% dplyr::select(-authority, -species_id2, -rank) %>% distinct()
-
-sp.tax<-meta_species_taxonomy()
 sp.tax<-sp.tax %>% dplyr::select(species_id, scientific_name, english_name) %>% distinct()
 
 sp<-left_join(sp.code, sp.tax, by="species_id")
@@ -37,37 +26,48 @@ PSSS$DecimalLongitude = measurements::conv_unit(PSSS$long, from = 'deg_dec_min',
 PSSS$DecimalLongitude<-as.numeric(PSSS$DecimalLongitude)
 PSSS$DecimalLongitude=PSSS$DecimalLongitude*(-1)
 
+##three sites have lat and long in a different format, which means they manually need fixed. 
+#I have flagged this to Toby to fix in the underlying data. 
+
+#If the survey_site_id is 60, 131, or 194, 
+#manually assign the decimal lat and long from the location table fields DecimalLatitude and DecimalLongitude and DecminLatitude and DecminLongitude
+PSSS$DecimalLatitude[PSSS$survey_site_id==60]<-47.12093
+PSSS$DecimalLongitude[PSSS$survey_site_id==60]<--122.77609
+PSSS$DecimalLatitude[PSSS$survey_site_id==131]<-47.16545
+PSSS$DecimalLongitude[PSSS$survey_site_id==131]<--122.80804
+PSSS$DecimalLatitude[PSSS$survey_site_id==194]<-48.61269
+PSSS$DecimalLongitude[PSSS$survey_site_id==194]<--123.09778
+
 #break apart survey_date and reform into day, month, year
 PSSS<-PSSS %>% separate(survey_date, into=c("Date", "del"), sep=" ") %>% dplyr::select(-del) %>% 
   separate(Date, into=c("YearCollected", "MonthCollected", "DayCollected"), sep="-") 
+
 #wrangle raptor data into the long format since each species identification should be in a unique row. 
-raptor1<-PSSS %>% filter(raptor1 != "") %>% mutate(common_name = raptor1, bird_count = raptor1_count, notes= raptor1_affect)%>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
+raptor1<-PSSS %>% filter(!is.na(raptor1)) %>% mutate(common_name = raptor1, bird_count = raptor1_count, notes= raptor1_affect)%>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
 
 raptor1<-raptor1 %>% group_by(site_name, common_name, YearCollected, MonthCollected, DayCollected) %>% mutate(bird_count=sum(bird_count)) %>% distinct(common_name, site_name, YearCollected, MonthCollected, DayCollected, .keep_all=TRUE)
 
-raptor2<-PSSS %>% filter(raptor2 != "") %>% mutate(common_name = raptor2, bird_count = raptor2_count, notes= raptor2_affect)%>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
+raptor2<-PSSS %>% filter(!is.na(raptor2)) %>% mutate(common_name = raptor2, bird_count = raptor2_count, notes= raptor2_affect)%>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
 
 raptor2<-raptor2 %>% group_by(site_name, common_name, YearCollected, MonthCollected, DayCollected) %>% mutate(bird_count=sum(bird_count)) %>% distinct(common_name, site_name, YearCollected, MonthCollected, DayCollected, .keep_all=TRUE)
 
-raptor3<-PSSS %>% filter(raptor3 != "") %>% mutate(common_name = raptor3, bird_count = raptor3_count, notes= raptor3_affect) %>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
+raptor3<-PSSS %>% filter(!is.na(raptor3)) %>% mutate(common_name = raptor3, bird_count = raptor3_count, notes= raptor3_affect) %>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
 
 raptor3<-raptor3 %>% group_by(site_name, common_name, YearCollected, MonthCollected, DayCollected) %>% mutate(bird_count=sum(bird_count)) %>% distinct(common_name, site_name, YearCollected, MonthCollected, DayCollected, .keep_all=TRUE)
 
-PSSS<-PSSS %>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
-
 #bind raptor data back with PSSS data
-PSSS<-rbind(PSSS, raptor1)
-PSSS<-rbind(PSSS, raptor2)
-PSSS<-rbind(PSSS, raptor3)
+raptor<-rbind(raptor1, raptor2)
+raptor<-rbind(raptor, raptor3)
+
+#now bind back with PSSS data
+PSSS<-PSSS %>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
+PSSS<-rbind(PSSS, raptor)
 
 #remove rows with missing common name
 PSSS<-PSSS %>% filter(common_name !="")
 
 #remove bearing and distance because we want each species/ site/ date to be a single row in the data set similar to BBCWS
 PSSS<-PSSS %>% dplyr::select(-bearing, -dist)
-
-#Now summarize the records per species/ site/ date
-PSSS<-PSSS %>% group_by(site_name, common_name, YearCollected, MonthCollected, DayCollected) %>% mutate(bird_count=sum(bird_count)) %>% distinct(common_name, site_name, YearCollected, MonthCollected, DayCollected, .keep_all=TRUE)
 
 #replace Thayer's Gull with Ivory Gull
 PSSS<-PSSS %>% mutate(common_name = ifelse(common_name == "Thayer's Gull", "Ivory Gull", common_name))
@@ -105,7 +105,7 @@ PSSS<-PSSS[BMDE_col]
 
 #final data clean
 PSSS$InstitutionCode<-"PSBO"
-PSSS<-PSSS %>% mutate(CatalogNumber = paste0(RouteIdentifier, "-", SpeciesCode, "-", YearCollected, sep=""))
+PSSS$CatalogNumber<-PSSS$survey_id
 PSSS<-PSSS %>% mutate(GlobalUniqueIdentifier = paste0("URN:catalog:", InstitutionCode, ":", CollectionCode, ":", CatalogNumber, sep=""))
 PSSS<-PSSS %>% mutate(ObservationDate = paste0(YearCollected, "-", MonthCollected, "-", DayCollected, sep=""))
 PSSS$DecimalLatitude<-round(PSSS$DecimalLatitude, 10)

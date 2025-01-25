@@ -28,7 +28,12 @@ librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredicto
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
                  exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
                  rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, 
-                 maps, splancs, spdep, igraph, ggspatial, terra, tidyterra) 
+                 maps, splancs, spdep, igraph, ggspatial, terra, tidyterra, stringr, reshape2, measurements) 
+
+
+BMDE<-meta_bmde_fields("extended")
+sp.code<-meta_species_codes()
+sp.tax<-meta_species_taxonomy()
 
 # Function to calculate duration in hours
 calculate_duration <- function(start, end) {
