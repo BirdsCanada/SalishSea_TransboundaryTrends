@@ -231,8 +231,6 @@ ggplot(data = all.data) +
        y = "Observation") +
   theme_minimal()
 
-#the relationship for a lot of species looks non-linear. There are diminishing returns to survey duration. We therefore suggest that this is modeled as a covarite in the model and not an offset. 
-
 ```
 
 ## 7. Spatial Data

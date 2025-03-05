@@ -44,20 +44,16 @@ PSSS<-PSSS %>% separate(survey_date, into=c("Date", "del"), sep=" ") %>% dplyr::
 
 #wrangle raptor data into the long format since each species identification should be in a unique row. 
 raptor1<-PSSS %>% filter(!is.na(raptor1)) %>% mutate(common_name = raptor1, bird_count = raptor1_count, notes= raptor1_affect)%>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
-
 raptor1<-raptor1 %>% group_by(site_name, common_name, YearCollected, MonthCollected, DayCollected) %>% mutate(bird_count=sum(bird_count)) %>% distinct(common_name, site_name, YearCollected, MonthCollected, DayCollected, .keep_all=TRUE)
-
 raptor2<-PSSS %>% filter(!is.na(raptor2)) %>% mutate(common_name = raptor2, bird_count = raptor2_count, notes= raptor2_affect)%>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
-
 raptor2<-raptor2 %>% group_by(site_name, common_name, YearCollected, MonthCollected, DayCollected) %>% mutate(bird_count=sum(bird_count)) %>% distinct(common_name, site_name, YearCollected, MonthCollected, DayCollected, .keep_all=TRUE)
-
 raptor3<-PSSS %>% filter(!is.na(raptor3)) %>% mutate(common_name = raptor3, bird_count = raptor3_count, notes= raptor3_affect) %>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
-
 raptor3<-raptor3 %>% group_by(site_name, common_name, YearCollected, MonthCollected, DayCollected) %>% mutate(bird_count=sum(bird_count)) %>% distinct(common_name, site_name, YearCollected, MonthCollected, DayCollected, .keep_all=TRUE)
 
 #bind raptor data back with PSSS data
 raptor<-rbind(raptor1, raptor2)
 raptor<-rbind(raptor, raptor3)
+raptor<-raptor %>% filter(common_name =="Bald Eagle")
 
 #now bind back with PSSS data
 PSSS<-PSSS %>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 

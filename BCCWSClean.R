@@ -18,7 +18,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   sp<-left_join(sp.code, sp.tax, by="species_id")
   sp<-sp %>% distinct(english_name, .keep_all = TRUE)
   
-  in.BCCWS<-merge(in.BCCWS, sp, by.x=c("CommonName"), by.y= ("english_name"), all.x=TRUE)
+  in.BCCWS<-merge(in.BCCWS, sp, by.x=c("CommonName"), by.y= ("english_name"), all.x=TRUE) ###Are we loosing the .sp and hybrids doing this. Need to check. 
   
   
   #Thayer's Gull missing SpeciesCode. Need to assign here species_id == 5190
@@ -59,7 +59,6 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # filter data by years 
   in.BCCWS <- subset(in.BCCWS, wyear >= Y1 & wyear <= Y2)
   
-  
   # Because there are errors in the Duration in Hours column, I will adjust the TimeObservationsEnded and TimeObservationStarted column.
   # Specifically, any value that is < 6 AM I will add 12 to bring it into 24 hour time.
   in.BCCWS$TimeObservationsEnded <- as.numeric(in.BCCWS$TimeObservationsEnded)
@@ -90,7 +89,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   in.BCCWS <- in.BCCWS %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude))
   #Filter events to 45.06N to 50.64N latitude and 125.07W to 115.15W longitude
   in.BCCWS <- in.BCCWS %>% filter(DecimalLatitude >= 45.06 & DecimalLatitude <= 50.64 & DecimalLongitude >= -125.07 & DecimalLongitude <= -115.15)
-  #remove the sampling point on the outside coastal edge of Vaconcover Isannd which in <-124 DecimialLongitude and <48.5 DecimialLatitude
+  #remove the sampling point on the outside coastal edge of Vaconcover Island which in <-124 DecimialLongitude and <48.5 DecimialLatitude
   in.BCCWS <- in.BCCWS %>% filter(!(DecimalLatitude < 48.5 & DecimalLongitude < -124))
   
   #Filter Duration in hours greater than 0.3 and less than 10
@@ -101,7 +100,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   
   # create an events matrix for future zero filling
   event.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
-  # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
+  # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum. Technically, each form should have a single value for durination in hours. 
   event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
   # ensure that each SurveyAreaIdentifier has a single decimal latitude and longitude. If multiple, take the first
   event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier) %>% slice_min(DecimalLatitude) %>% ungroup()
