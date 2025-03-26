@@ -24,7 +24,7 @@ BCCWS data collection protocol can be found online [here](https://www.birdscanad
 
 In short, surveys have been conducted by volunteers using a standardized protocol and data collection [sheets](https://birdscanada.b-cdn.net/wp-content/uploads/2021/02/BCCWS_Datasheet.pdf). Shore-based counts are completed monthly on or near the second Sunday of each month from September to April. Surveys are complete within approximately 2 hours of high tide to maximize the opportunity for close observation. All waterbirds observed to a distance of 1 km from the high tide line are counted, except those that fly through without stopping. In the case of larger flocks, numbers are estimated by counting individuals and species in groups and scaling up (see [Training Module for Volunteers](https://birdscanada.b-cdn.net/wp-content/uploads/2020/02/BCCWS-Training-Module.pdf)). Data are entered through a customized online data entry system available on the Birds Canada website, [NatureCounts](https://birdscanada.github.io/www.birdscanada.%20org/birdmon/default/main.jsp). Observations are processed using the eBird data filters to flag rare species and high counts during observer data entry, and records are manually reviewed for form accuracy.
 
-The data are collected using a standardize protocol, by trained citizen-science volunteers. This standardization is a strength of this data set for making inferences about coastal waterbirds in the Canadian Salish Sea.
+The data are collected using a standardized protocol, by trained citizen-science volunteers. This standardization is a strength of this data set for making inferences about coastal waterbirds in the Canadian Salish Sea.
 
 ### 1.2 Data Collected
 
@@ -47,7 +47,9 @@ Data are formatted using a standardized schema that is a core standard of the [A
 ```{r BCCWS Data Download}
 
 #sample code to access BCCWS data from NatureCounts
-BCCWS<-nc_data_dl(collection="BCCWS", username = "YOUR USERNAME", info="MY REASON", fields_set = "extended", request_id = 12345)
+# BCCWS<-nc_data_dl(collection="BCCWS", username = "YOUR USERNAME", info="MY REASON", fields_set = "extended", request_id = 12345)
+
+BCCWS<-nc_data_dl(collection="BCCWS", username = "rdjmacklin", fields_set = "core", request_id = 242997)
 
 #this step should not be needed but it appears that there are more than 169 fields being included with the download. 
 BMDE_col<-unique(BMDE$local_name) 
@@ -66,7 +68,7 @@ BCCWS<-read.csv("Data/BCCWS.csv")
 
 PSSS data collection protocol can be found online [here](https://seattleaudubon.org/wp-content/uploads/2021/01/PSSS_Protocol_2014-15.pdf).
 
-In short, surveys are conducted by volunteers using a standardized protocol and data collection [sheets](https://seattleaudubon.org/wp-content/uploads/2021/09/PSSS-Datasheet.pdf). Shore-based counts are completed monthly on the first Saturday of each month from October to April. Surveys are completed within approximately 2 hours of high tide to maximize the opportunity for close observation. Surveys are a minimum of 15 minutes and a maximum of 30 minutes per site. All waterbirds observed to a distance of 300 m from the high tide line are counted, except those that fly through without stopping. For large flocks, surveys estimate both the min, max, and best estimate. Surveyors are required to attend a short training session with Seattle Audubon staff prior to their first survey. Data are entered through a customized online data entry system, available [here](http://seabirdsurvey.org/seabirdsurvey/).
+In short, surveys are conducted by volunteers using a standardized protocol and data collection [sheets](https://seattleaudubon.org/wp-content/uploads/2021/09/PSSS-Datasheet.pdf). Shore-based counts are completed monthly on the first Saturday of each month from October to April. Surveys are completed within approximately 2 hours of high tide to maximize the opportunity for close observation. Surveys are a minimum of 15 minutes and a maximum of 30 minutes per site. All waterbirds observed to a distance of 300 m from the high tide line are counted, except those that fly through without stopping. For large flocks, surveys estimate both the min, max, and best estimate. Surveyors are required to attend a short training session with Puget Sound Bird Observatory staff prior to their first survey. Data are entered through a customized online data entry system, available [here](http://seabirdsurvey.org/seabirdsurvey/).
 
 The data are collected using a standardized protocol, by trained citizen-science volunteers. This standardization is a strength of this dataset for making inferences about coastal waterbirds in the US Salish Sea.
 
@@ -84,7 +86,7 @@ Auxiliary Data Collected:
 
 ### 2.3 Data Access
 
-At the time of writing, the data were only accessible by reaching out to the Seattle Audubon directly and filling out a data share agreement. The data will be sent to you as a .xslx flat file which will be suitable for Data formatting and processing. Ensure that you receive all the data for the specified temporal period you are interested in analyzing. This will be needed to allow for proper zero-filling. Place the data in a `Data` folder in your working directory.
+At the time of writing, the data were only accessible by reaching out to the Puget Sound Bird Observatory directly and filling out a data share agreement. The data will be sent to you as a .xslx flat file which will be suitable for Data formatting and processing. Ensure that you receive all the data for the specified temporal period you are interested in analyzing. This will be needed to allow for proper zero-filling. Place the data in a `Data` folder in your working directory.
 
 ```{r working directory}
 getwd()
@@ -95,8 +97,9 @@ Now you can import the data using the file name.
 ```{r PSSS, warning=FALSE}
 
 #sample code to access PSSS data from your working Data directory
-PSSS <- read_excel("Data/PSSS_2008-2025.xlsx") #copy contains wyear 2023
+#PSSS <- read_excel("Data/PSSS_2008-2025.xlsx") #copy contains wyear 2023
 
+PSSS <- read_csv("Data/PSSS Survey Data - 13 Mar 2025.csv")
 ```
 
 ### 2.4 Data Format
@@ -121,7 +124,7 @@ Now it is time to do some data cleaning before we combine the BCCWS and PSSS dat
 
 ```{r}
 
-#Manually Specify the start and end year of the analysis
+#Manually specify the start and end year of the analysis
 #Keep in mind that this is the winter year (wyear) which is the start year of the survey, #The survey straddles two calendar years
 Y1 = 2008
 Y2 = 2024
@@ -146,7 +149,7 @@ write.csv(events, "Data/events.csv", row.names = FALSE)
 
 ## 4. Species Selection
 
-Not all species will be included in an analysis. Some species are detected to infrequently to be included or they may not be species of focus for your study area. For example, you may wish to manually create a species list or you can set minimum data requirements for species to be included in the analysis.
+Not all species will be included in an analysis. Some species are detected too infrequently to be included or they may not be species of focus for your study area. For example, you may wish to manually create a species list or you can set minimum data requirements for species to be included in the analysis.
 
 To manually create your list, you can use the 4 letter species codes. For example, to include the species: Surf Scoter (SUSC), Long-tailed Duck (LTDU), and Buffelhead (BUFF), you would create a list as follows:
 
@@ -155,14 +158,14 @@ To manually create your list, you can use the 4 letter species codes. For exampl
 sp.list <-c("SUSC", "LTDU", "BUFF")
 
 #Now filter the full dataset by the species list
-in.data<-in.data[in.data$SpeciesCode %in% sp.list,]
+sp.data<-in.data[in.data$SpeciesCode %in% sp.list,]
 
 #write to Data folder in working directory
 write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
 
 ```
 
-Here we select species that are detected by both surveys. In the analysis script we will set some minumum data requirements to remove species that do not have enough data to estimate trends.
+Here we select species that are detected by both surveys. In the analysis script we will set some minimum data requirements to remove species that do not have enough data to estimate trends.
 
 ```{r}
 
@@ -171,7 +174,7 @@ sp.bsss<-in.data %>% filter(ProjectCode == "BCCWS") %>% dplyr::select(SpeciesCod
 sp.psss<-in.data %>% filter(ProjectCode == "PSSS") %>% dplyr::select(SpeciesCode) %>% distinct()
 
 common.species<-intersect(sp.bsss$SpeciesCode, sp.psss$SpeciesCode) 
-#There are 73 species in common between BCCWS and PSSS
+#There are 70 species in common between BCCWS and PSSS
 
 #filter the full dataset to only include the common species
 sp.data<-in.data[in.data$SpeciesCode %in% common.species,]
@@ -183,7 +186,7 @@ write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
 
 ## 5. Sampling Events Plot
 
-Now we will plot the distribution of sampling events over the extent of the Salish Sea. This will be facets by year (wyear) so that changes in sampling effort can be spatailly visualized. Each survey program will be given a different colout.
+Now we will plot the distribution of sampling events over the extent of the Salish Sea. This will be facets by year (wyear) so that changes in sampling effort can be spatially visualized. Each survey program will be given a different colour.
 
 ```{r}
 
@@ -215,7 +218,7 @@ ggplot(data = events_sf) +
 
 ## 6. Effort Plot (Duration in Hours)
 
-The duration of each survey is an important variable to consider when analyzing trends. Longer surveys may detect more birds. There is a substaintial difference in survey duration between BCCWS and PSSS. We therefore want to model this relationship. We look here to see if the relationship look linear or if there is a better model to fit the data.
+The duration of each survey is an important variable to consider when analyzing trends. Longer surveys may detect more birds. There is a substantial difference in survey duration between BCCWS and PSSS. We therefore want to model this relationship. We look here to see if the relationship look linear or if there is a better model to fit the data.
 
 ```{r}
 
