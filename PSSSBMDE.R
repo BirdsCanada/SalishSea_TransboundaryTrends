@@ -29,18 +29,20 @@ PSSS$DecimalLongitude=PSSS$DecimalLongitude*(-1)
 ##three sites have lat and long in a different format, which means they manually need fixed. 
 #I have flagged this to Toby to fix in the underlying data. 
 
-#If the survey_site_id is 60, 131, or 194, 
+#If the survey_site_id is 60, 108, 131, or 171, 
 #manually assign the decimal lat and long from the location table fields DecimalLatitude and DecimalLongitude and DecminLatitude and DecminLongitude
-PSSS$DecimalLatitude[PSSS$survey_site_id==60]<-47.12093
-PSSS$DecimalLongitude[PSSS$survey_site_id==60]<--122.77609
-PSSS$DecimalLatitude[PSSS$survey_site_id==131]<-47.16545
-PSSS$DecimalLongitude[PSSS$survey_site_id==131]<--122.80804
-PSSS$DecimalLatitude[PSSS$survey_site_id==194]<-48.61269
-PSSS$DecimalLongitude[PSSS$survey_site_id==194]<--123.09778
+PSSS$DecimalLatitude[PSSS$site_code==60]<-47.12093
+PSSS$DecimalLongitude[PSSS$site_code==60]<--122.77609
+PSSS$DecimalLatitude[PSSS$site_code==108]<-47.16545
+PSSS$DecimalLongitude[PSSS$site_code==108]<--122.80804
+PSSS$DecimalLatitude[PSSS$site_code==131]<-47.596750
+PSSS$DecimalLongitude[PSSS$site_code==131]<--122.541700
+PSSS$DecimalLatitude[PSSS$site_code==171]<-48.61269
+PSSS$DecimalLongitude[PSSS$site_code==171]<--123.09778
 
 #break apart survey_date and reform into day, month, year
 PSSS<-PSSS %>% separate(survey_date, into=c("Date", "del"), sep=" ") %>% dplyr::select(-del) %>% 
-  separate(Date, into=c("YearCollected", "MonthCollected", "DayCollected"), sep="-") 
+  separate(Date, into=c("MonthCollected", "DayCollected", "YearCollected"), sep="/") 
 
 #wrangle raptor data into the long format since each species identification should be in a unique row. 
 raptor1<-PSSS %>% filter(!is.na(raptor1)) %>% mutate(common_name = raptor1, bird_count = raptor1_count, notes= raptor1_affect)%>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
@@ -72,7 +74,7 @@ PSSS<-PSSS %>% mutate(common_name = ifelse(common_name == "Thayer's Gull", "Ivor
 PSSS<-merge(PSSS, sp, by.x=c("common_name"), by.y= ("english_name"), all.x=TRUE)
 
 #rename data columns to match BMDE
-PSSS<-PSSS %>% dplyr::rename(CommonName =common_name, SurveyAreaIdentifier= survey_site_id, Locality = site_name, MinimumElevationInMeters=elevation, MaximumElevationInMeters=elevation, TimeCollected = start_time, TimeObservationsEnded=end_time, ObservationCount = bird_count, ObservationCount2=large_flock_best, ObsCountAtLeast = large_flock_min, ObsCountAtMost = large_flock_max, FieldNotes=notes, Collector = name, ScientificName=scientific_name, SpeciesCode=species_code, AllSpeciesReported=is_complete)
+PSSS<-PSSS %>% dplyr::rename(CommonName =common_name, SurveyAreaIdentifier= site_code, Locality = site_name, MinimumElevationInMeters=elevation, MaximumElevationInMeters=elevation, TimeCollected = start_time, TimeObservationsEnded=end_time, ObservationCount = bird_count, ObservationCount2=large_flock_best, ObsCountAtLeast = large_flock_min, ObsCountAtMost = large_flock_max, FieldNotes=notes, Collector = name, ScientificName=scientific_name, SpeciesCode=species_code, AllSpeciesReported=is_complete)
 
 PSSS$RouteIdentifier<-PSSS$SurveyAreaIdentifier
 PSSS$BasisOfRecord <- "Observation"
@@ -97,7 +99,6 @@ BMDE_col<-unique(BMDE$local_name)
 
 missing<-setdiff(BMDE_col, names(PSSS))
 PSSS[missing]<-""
-PSSS<-PSSS[BMDE_col]
 
 #final data clean
 PSSS$InstitutionCode<-"PSBO"
@@ -106,6 +107,9 @@ PSSS<-PSSS %>% mutate(GlobalUniqueIdentifier = paste0("URN:catalog:", Institutio
 PSSS<-PSSS %>% mutate(ObservationDate = paste0(YearCollected, "-", MonthCollected, "-", DayCollected, sep=""))
 PSSS$DecimalLatitude<-round(PSSS$DecimalLatitude, 10)
 PSSS$DecimalLongitude<-round(PSSS$DecimalLongitude, 10)
+
+#filter to BMDE columns
+PSSS<-PSSS[BMDE_col]
 
 #PSSS<-PSSS %>% dplyr::select(-position, -zero_ref_point, -weather, -precipitation, #-sea_state, -tide_movement, -visibility_distance, -poor_visibility_reason, -poor_visibility_reason_other, -equipment, -walker_count, -dog_count, -power_boat_count, -unpowered_boat_count, -other_activities_name, -other_activities_count, -SurveyComments, -horizon_obscured, -bird_name, -survey_id, -SiteComments, -is_verifier, -eye_height, -arm_length, -binocular_magnification, -scope_magnification, -lat, -long, -species_id, -no_measurements, -FieldNotes)
 
