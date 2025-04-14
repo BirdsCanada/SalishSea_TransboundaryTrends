@@ -106,7 +106,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier) %>% slice_min(DecimalLatitude) %>% ungroup()
   
   # retain columns that are needed for the analysis
-  in.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
+  in.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
 
   # write index.data to file
    write.csv(in.BCCWS, "Data/BCCWS.clean.csv")

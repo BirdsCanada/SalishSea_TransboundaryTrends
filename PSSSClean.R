@@ -6,7 +6,6 @@
 in.PSSS <- read.csv("Data/PSSS.csv") # reads in back-up copy of database 
 
 in.PSSS$SpeciesCode<-as.factor(in.PSSS$SpeciesCode)
-in.PSSS <- subset(in.PSSS, !is.na(SpeciesCode))
 
 # filter data by months October to April
 in.PSSS <- subset(in.PSSS, MonthCollected %in% c(10:12, 1:4))
@@ -24,6 +23,15 @@ in.PSSS <- in.PSSS %>% group_by(SurveyAreaIdentifier, YearCollected, MonthCollec
 # for example, January-April 2005 would be wyear 2004
 in.PSSS$wyear <- ifelse(in.PSSS$MonthCollected %in% c(1:4), in.PSSS$YearCollected-1, 
                          in.PSSS$YearCollected)
+
+# filter data by years 
+in.PSSS <- subset(in.PSSS, wyear >= Y1 & wyear <= Y2)
+
+# before we do more cleaning, make your events layer to ensure we have captured all the survey events. 
+# create an events matrix for future zero filling
+event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
+# if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
+event.PSSS <- event.PSSS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
 
 # Because there are errors in the Duration in Hours column, I will adjust the TimeObservationsEnded and TimeObservationStarted column. 
 # Specifically, any value that is < 6 AM I will add 12 to bring it into 24 hour time. 
@@ -49,15 +57,8 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
   
 #remove remaining negative DurationInHours
   in.PSSS <- in.PSSS %>% filter(DurationInHours >= 0)  
-#Filter Duration in hours greater than 0.3 and less than 10
-  in.PSSS<-in.PSSS[in.PSSS$DurationInHours > 0.3 & in.PSSS$DurationInHours < 3,]  
-  
-# create a new column called wyear, which groups surveys by winter year
-# for example, January-April 2005 would be wyear 2004
-  in.PSSS$wyear <- ifelse(in.PSSS$MonthCollected %in% c(1:4), in.PSSS$YearCollected-1, 
-                           in.PSSS$YearCollected)
-  # filter data by years 
-  in.PSSS <- subset(in.PSSS, wyear >= Y1 & wyear <= Y2)
+#Filter Duration in hours greater than 0.3 and less than 3
+  in.PSSS<-in.PSSS[in.PSSS$DurationInHours > 0.03 & in.PSSS$DurationInHours < 3,]  
 
   #Remove ObservationCounts that are NA
   in.PSSS <- in.PSSS %>% filter(!is.na(ObservationCount))
@@ -67,16 +68,14 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
   in.PSSS <- in.PSSS %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude))
   #Filter events to 45.06N to 50.64N latitude and 125.07W to 115.15W longitude
   in.PSSS <- in.PSSS %>% filter(DecimalLatitude >= 45.06 & DecimalLatitude <= 50.64 & DecimalLongitude >= -125.07 & DecimalLongitude <= -115.15)
-                        
-
-  # create an events matrix for future zero filling
-  event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
-  # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
-  event.PSSS <- event.PSSS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
-  
+                
   # retain columns that are needed for the analysis
-  in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
+  in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
 
+  
+  # clean up some of the species names and codes
+  in.PSSS %>% filter(!is.na(CommonName)) %>% filter(CommonName != c("alcid sp.", "grebe sp.", "gull (small)", "diving duck sp.", "gull sp.", "scoter sp.", "cormorant sp.", "goldeneye sp."))
+  
   # write index.data to file
   write.csv(in.PSSS, "Data/PSSS.clean.csv")
   write.csv(event.PSSS, "Data/PSSS.events.csv")

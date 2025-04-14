@@ -95,7 +95,7 @@ Now you can import the data using the file name.
 ```{r PSSS, warning=FALSE}
 
 #sample code to access PSSS data from your working Data directory
-PSSS <- read_excel("Data/PSSS_2008-2025.xlsx") #copy contains wyear 2023
+PSSS <- read.csv("Data/PSSS Survey Data - 13 Mar 2025.csv") #copy contains wyear 2023
 
 ```
 
@@ -118,6 +118,18 @@ PSSS<-read.csv("Data/PSSS.csv")
 ## 3. Clean and Combine
 
 Now it is time to do some data cleaning before we combine the BCCWS and PSSS datasets. The user has the opportunity here to select the start and end dates of the analysis by changing the Y1 and Y2 variables.
+
+During this process some species are combined following advise from the survey coordinators. These are species that are typically difficult to tell apart and are often misidentified. Other non-target species are also removed.
+
+-   Large Gulls = gull (large) + WEGU + GWGU hybrid + Glaucous-winger + Western + Herring + Glaucous + Iceland (Thayer's) + California Gull
+
+-   Greater/Lesser Scaup = scaup sp + Lesser + Greater Scaup
+
+-   Eared/Horned Grebe
+
+-   Western/Clark's Grebe
+
+-   Canada/Cackling Goose
 
 ```{r}
 
