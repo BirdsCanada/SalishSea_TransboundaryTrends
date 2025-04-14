@@ -17,12 +17,17 @@ spatial.dir <- "Data/Spatial/"
 plot.dir <- "Output/Plots/"
 
 #Load required libraries
-#install.packages("remotes")
-#remotes::install_github("BirdsCanada/naturecounts")
 
-#install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE) 
+install.packages("librarian")
+install.packages("devtools")
+install.packages("remotes")
 
-#devtools::install_github("ropensci/rnaturalearthhires")
+
+remotes::install_github("BirdsCanada/naturecounts")
+
+install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE) 
+
+devtools::install_github("ropensci/rnaturalearthhires")
 
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
@@ -31,7 +36,7 @@ librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredicto
                  maps, splancs, spdep, igraph, ggspatial, terra, tidyterra, stringr, reshape2, measurements) 
 
 
-BMDE<-meta_bmde_fields("extended")
+BMDE<-meta_bmde_fields("core")
 sp.code<-meta_species_codes()
 sp.tax<-meta_species_taxonomy()
 

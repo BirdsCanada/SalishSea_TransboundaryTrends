@@ -11,9 +11,12 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   #     ObservationCount4 (Offshore)
   #     ObservationCount5 (Unknown Habitat - might include flyovers? Protocol says not to count fly overs)
   
-  in.BCCWS$ObservationCount<-as.numeric(in.BCCWS$ObservationCount3)  ##WILLL WANT TO KEEP JUST THE NEARSHORE DATA TO MAKE THIS COMPARABLE TO PSSS
+  in.BCCWS$ObservationCount<-as.numeric(in.BCCWS$ObservationCount3)  ##WILL WANT TO KEEP JUST THE NEARSHORE DATA TO MAKE THIS COMPARABLE TO PSSS
   
-  sp.code<-sp.code %>% filter(authority=="BSCDATA") %>% dplyr::select(-authority, -species_id2, -rank) %>% distinct()
+  if(!(is.null(sp.code$authority))) {
+    sp.code<-sp.code %>% filter(authority=="BSCDATA") %>% dplyr::select(-authority, -species_id2, -rank) %>% distinct()
+  } 
+  
   sp.tax<-sp.tax %>% dplyr::select(species_id, scientific_name, english_name) %>% distinct()
   sp<-left_join(sp.code, sp.tax, by="species_id")
   sp<-sp %>% distinct(english_name, .keep_all = TRUE)

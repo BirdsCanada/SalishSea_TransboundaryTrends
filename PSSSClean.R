@@ -5,6 +5,9 @@
 
 in.PSSS <- read.csv("Data/PSSS.csv") # reads in back-up copy of database 
 
+#Thayer's Gull missing SpeciesCode. Need to assign here species_id == 5190
+in.PSSS$SpeciesCode[in.PSSS$CommonName == "Iceland (Thayer's) Gull"] <- "ICGU"
+
 in.PSSS$SpeciesCode<-as.factor(in.PSSS$SpeciesCode)
 
 # filter data by months October to April
