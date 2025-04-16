@@ -144,6 +144,8 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5142] <- "SBIG"
   in.BCCWS$SpeciesCode<-as.factor(in.BCCWS$SpeciesCode)
   in.BCCWS <- subset(in.BCCWS, !is.na(CommonName))
+  #Remove ObservationCounts that are NA
+  in.BCCWS <- in.BCCWS %>% filter(!is.na(ObservationCount))
   
   # write index.data to file
    write.csv(in.BCCWS, "Data/BCCWS.clean.csv")
