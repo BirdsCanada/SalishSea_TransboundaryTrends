@@ -1,7 +1,7 @@
 #Code used to clean the PSSS and prepare it for analysis 
 
 #Created by Danielle Ethier
-#December 2024
+#Last edited April 2025
 
 in.PSSS <- read.csv("Data/PSSS.csv") # reads in back-up copy of database 
 
@@ -13,7 +13,7 @@ in.PSSS$SpeciesCode<-as.factor(in.PSSS$SpeciesCode)
 # filter data by months October to April
 in.PSSS <- subset(in.PSSS, MonthCollected %in% c(10:12, 1:4))
 
-# if duplicate records in data file; this keeps only one. There currently are no doublicates. 
+# if duplicate records in data file; this keeps only one. There currently are no duplicates. 
 in.PSSS <- distinct(in.PSSS)
 
 #create day of year column 
@@ -30,11 +30,10 @@ in.PSSS$wyear <- ifelse(in.PSSS$MonthCollected %in% c(1:4), in.PSSS$YearCollecte
 # filter data by years 
 in.PSSS <- subset(in.PSSS, wyear >= Y1 & wyear <= Y2)
 
-# before we do more cleaning, make your events layer to ensure we have captured all the survey events. 
-# create an events matrix for future zero filling
-event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
-# if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
-event.PSSS <- event.PSSS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
+#Remove missing DecimalLatitude or DecimalLongitude
+in.PSSS <- in.PSSS %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude))
+#Filter events to 45.06N to 50.64N latitude and 125.07W to 115.15W longitude
+in.PSSS <- in.PSSS %>% filter(DecimalLatitude >= 45.06 & DecimalLatitude <= 50.64 & DecimalLongitude >= -125.07 & DecimalLongitude <= -115.15)
 
 # Because there are errors in the Duration in Hours column, I will adjust the TimeObservationsEnded and TimeObservationStarted column. 
 # Specifically, any value that is < 6 AM I will add 12 to bring it into 24 hour time. 
@@ -61,23 +60,59 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
 #remove remaining negative DurationInHours
   in.PSSS <- in.PSSS %>% filter(DurationInHours >= 0)  
 #Filter Duration in hours greater than 0.3 and less than 3
-  in.PSSS<-in.PSSS[in.PSSS$DurationInHours > 0.03 & in.PSSS$DurationInHours < 3,]  
+  in.PSSS<-in.PSSS[in.PSSS$DurationInHours > 0.03 & in.PSSS$DurationInHours < 5,]  
 
+  # before we do more cleaning, make your events layer to ensure we have captured all the survey events. 
+  # create an events matrix for future zero filling
+  event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
+  # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
+  event.PSSS <- event.PSSS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
+  
   #Remove ObservationCounts that are NA
   in.PSSS <- in.PSSS %>% filter(!is.na(ObservationCount))
   #Remove missing SurveyAreaIdentifiers
   in.PSSS <- in.PSSS %>% filter(!is.na(SurveyAreaIdentifier))
-  #Remove missing DecimalLatitude or DecimalLongitude
-  in.PSSS <- in.PSSS %>% filter(!is.na(DecimalLatitude) & !is.na(DecimalLongitude))
-  #Filter events to 45.06N to 50.64N latitude and 125.07W to 115.15W longitude
-  in.PSSS <- in.PSSS %>% filter(DecimalLatitude >= 45.06 & DecimalLatitude <= 50.64 & DecimalLongitude >= -125.07 & DecimalLongitude <= -115.15)
-                
+      
   # retain columns that are needed for the analysis
   in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
 
-  
   # clean up some of the species names and codes
-  in.PSSS %>% filter(!is.na(CommonName)) %>% filter(CommonName != c("alcid sp.", "grebe sp.", "gull (small)", "diving duck sp.", "gull sp.", "scoter sp.", "cormorant sp.", "goldeneye sp."))
+  in.PSSS<-in.PSSS %>% filter(!is.na(CommonName)) %>% filter(!CommonName %in% c("alcid sp.", "grebe sp.", "gull (small)", "diving duck sp.", "gull sp.", "scoter sp.", "cormorant sp.", "goldeneye sp.", "dabbling duck sp.", "merganser sp.", "loon sp."))
+  
+  #remove species that are detected less than 10 times over all years
+  sample<-in.PSSS %>% group_by(CommonName) %>% summarise(n_tot = sum(ObservationCount, na.rm=TRUE)) %>% filter(n_tot>10)
+  sample<-sample %>% filter(CommonName != "") %>% select(-n_tot)
+  list<-sample$CommonName
+  in.PSSS<-in.PSSS %>% filter(CommonName %in% list)
+  
+  #Group some species that are hard to identity
+  in.PSSS <- in.PSSS %>%
+    mutate(
+      CommonName = case_match(
+        CommonName,
+        c("gull (large)", "Glaucous Gull", "Glaucous-winged Gull", "Western Gull", "Herring Gull", "Iceland (Thayer's) Gull", "Iceland (Thayer's Gull)", "WEGU x GWGU hybrid", "California Gull") ~ "Large Gull",
+        .default = CommonName), 
+    CommonName = case_match(
+      CommonName,
+      c("scaup sp.", "Lesser Scaup", "Greater Scaup") ~ "Greater/Lesser Scaup",
+        .default = CommonName
+      ), 
+    CommonName = case_match(
+      CommonName,
+      c("Eared Grebe", "Horned Grebe") ~ "Eared/Horned Grebe",
+        .default = CommonName
+      ), 
+    CommonName = case_match(
+      CommonName,
+      c("Canada Goose", "Cackling Goose") ~ "Canada/Cackling Goose",
+        .default = CommonName
+      ), 
+    CommonName = case_match(
+      CommonName,
+      c("Clark's Grebe", "Western Grebe") ~ "Western/Clark's Grebe",
+        .default = CommonName
+      ))
+  
   
   # write index.data to file
   write.csv(in.PSSS, "Data/PSSS.clean.csv")

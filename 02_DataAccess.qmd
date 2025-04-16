@@ -47,13 +47,7 @@ Data are formatted using a standardized schema that is a core standard of the [A
 ```{r BCCWS Data Download}
 
 #sample code to access BCCWS data from NatureCounts
-# BCCWS<-nc_data_dl(collection="BCCWS", username = "YOUR USERNAME", info="MY REASON", fields_set = "extended", request_id = 12345)
-
-BCCWS<-nc_data_dl(collection="BCCWS", username = "rdjmacklin", fields_set = "core", request_id = 242997)
-
-#this step should not be needed but it appears that there are more than 169 fields being included with the download. 
-BMDE_col<-unique(BMDE$local_name) 
-BCCWS<-BCCWS[BMDE_col]
+ BCCWS<-nc_data_dl(collection="BCCWS", username = "YOUR USERNAME", info="MY REASON", fields_set = "extended", request_id = 12345)
 
 #Write to Data folder in working directory
 write.csv(BCCWS, "Data/BCCWS.csv", row.names = FALSE)
@@ -97,13 +91,9 @@ Now you can import the data using the file name.
 ```{r PSSS, warning=FALSE}
 
 #sample code to access PSSS data from your working Data directory
-<<<<<<< HEAD
-PSSS <- read.csv("Data/PSSS Survey Data - 13 Mar 2025.csv") #copy contains wyear 2023
-=======
-#PSSS <- read_excel("Data/PSSS_2008-2025.xlsx") #copy contains wyear 2023
->>>>>>> ac9ff8d3f9e54809d83bbe2a893e70450ad45e4a
 
-PSSS <- read_csv("Data/PSSS Survey Data - 13 Mar 2025.csv")
+PSSS <- read.csv("Data/PSSS Survey Data - 13 Mar 2025.csv") #copy contains wyear 2023
+
 ```
 
 ### 2.4 Data Format
@@ -126,17 +116,17 @@ PSSS<-read.csv("Data/PSSS.csv")
 
 Now it is time to do some data cleaning before we combine the BCCWS and PSSS datasets. The user has the opportunity here to select the start and end dates of the analysis by changing the Y1 and Y2 variables.
 
-During this process some species are combined following advise from the survey coordinators. These are species that are typically difficult to tell apart and are often misidentified. Other non-target species are also removed.
+During this process some species are combined following advise from the survey coordinators. These are species that are typically difficult to tell apart and are often misidentified. Other non-target species are also removed. Any species detected less than 10 times over all years is also considered rare and removed. 
 
--   Large Gulls = gull (large) + WEGU + GWGU hybrid + Glaucous-winger + Western + Herring + Glaucous + Iceland (Thayer's) + California Gull
+-   "Large Gulls" = gull (large) + WEGU + GWGU hybrid + Glaucous-winger + Western + Herring + Glaucous + Iceland (Thayer's) + California Gull
 
--   Greater/Lesser Scaup = scaup sp + Lesser + Greater Scaup
+-   "Greater/Lesser Scaup" = scaup sp + Lesser + Greater Scaup
 
--   Eared/Horned Grebe
+-   "Eared/Horned Grebe"
 
--   Western/Clark's Grebe
+-   "Western/Clark's Grebe"
 
--   Canada/Cackling Goose
+-   "Canada/Cackling Goose"
 
 ```{r}
 
@@ -167,33 +157,33 @@ write.csv(events, "Data/events.csv", row.names = FALSE)
 
 Not all species will be included in an analysis. Some species are detected too infrequently to be included or they may not be species of focus for your study area. For example, you may wish to manually create a species list or you can set minimum data requirements for species to be included in the analysis.
 
-To manually create your list, you can use the 4 letter species codes. For example, to include the species: Surf Scoter (SUSC), Long-tailed Duck (LTDU), and Buffelhead (BUFF), you would create a list as follows:
+To manually create your list, you can use the species name. For example, to include the species: Surf Scoter (SUSC), Long-tailed Duck (LTDU), and Buffelhead (BUFF), you would create a list as follows:
 
 ```{r}
 
-sp.list <-c("SUSC", "LTDU", "BUFF")
+sp.list <-c("Surf Scoter", "Long-tailed Dick", "Buffelhead")
 
 #Now filter the full dataset by the species list
-sp.data<-in.data[in.data$SpeciesCode %in% sp.list,]
+sp.data<-in.data[in.data$CommonName %in% sp.list,]
 
 #write to Data folder in working directory
 write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
 
 ```
 
-Here we select species that are detected by both surveys. In the analysis script we will set some minimum data requirements to remove species that do not have enough data to estimate trends.
+Here we select species that are detected by both surveys. Generally, PSSS monitors just targets, whereas the BCCWS monitors more non-targets. In the analysis script we will set some additional minimum data requirements to remove species that do not have enough data to estimate trends.
 
 ```{r}
 
 #Determine which SpeciesCode each ProjectCode share in the full dataset
-sp.bsss<-in.data %>% filter(ProjectCode == "BCCWS") %>% dplyr::select(SpeciesCode) %>% distinct()
-sp.psss<-in.data %>% filter(ProjectCode == "PSSS") %>% dplyr::select(SpeciesCode) %>% distinct()
+sp.bccws<-in.data %>% filter(ProjectCode == "BCCWS") %>% dplyr::select(CommonName) %>% distinct()
+sp.psss<-in.data %>% filter(ProjectCode == "PSSS") %>% dplyr::select(CommonName) %>% distinct()
 
-common.species<-intersect(sp.bsss$SpeciesCode, sp.psss$SpeciesCode) 
-#There are 70 species in common between BCCWS and PSSS
+common.species<-intersect(sp.bccws$CommonName, sp.psss$CommonName) 
+#There are 53 species in common between BCCWS and PSSS
 
 #filter the full dataset to only include the common species
-sp.data<-in.data[in.data$SpeciesCode %in% common.species,]
+sp.data<-in.data[in.data$CommonName %in% common.species,]
 
 #write to Data folder in working directory
 write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
@@ -244,7 +234,7 @@ ggplot(data = all.data) +
   geom_point(aes(x = DurationInHours, y = ObservationCount), alpha = 0.5) +
   #add loess smooth
   geom_smooth(aes(x = DurationInHours, y = ObservationCount), method = "loess", se = FALSE, color = "red") +
-  facet_wrap(~ SpeciesCode, scales = "free_y") +
+  facet_wrap(~ CommonName, scales = "free_y") +
   labs(title = "Duration of Survey vs. Observation Count",
        x = "Duration (hours)",
        y = "Observation") +
@@ -281,7 +271,7 @@ events_sf$Province <- salish_sea$name[nearest_indices]
 
 
 #read 2024_CW_watershed.shp file from the Data/Spatial subfolder
-watershed <- st_read("Data/Spatial/2024_CW_watershed.shp")
+watershed <- st_read("Data/Spatial/2024_CW_watersheds.shp")
 #read CW_boundary_2024.shp file from the Data/Spatial subfolder
 boundary_watershed <- st_read("Data/Spatial/CW_boundary_2024.shp")
 #read kba.20241209051227.shp file from the Data/Spatial subfolder

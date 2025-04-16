@@ -29,7 +29,6 @@ PSSS$DecimalLongitude=PSSS$DecimalLongitude*(-1)
 ##several sites have lat and long in a different format, which means they manually need fixed. 
 #I have flagged this to Toby to fix in the underlying data. 
 
-<<<<<<< HEAD
 test<-PSSS %>% filter(is.na(DecimalLatitude)) %>% separate(lat, into=c("DecimalLatitude", "DecimalLongitude"), sep=",")
 PSSS<-PSSS %>% filter(!is.na(DecimalLatitude)) %>% select(-lat)
 PSSS<-rbind(PSSS, test)
@@ -46,25 +45,13 @@ PSSS<-rbind(PSSS, test)
 # PSSS$DecimalLatitude[PSSS$site_code==171]<-48.61269
 # PSSS$DecimalLongitude[PSSS$site_code==171]<--123.09778
 
-
-#break apart survey_date and reform into day, month, year
-PSSS<-PSSS %>% separate(survey_date, into=c("Date", "del"), sep=" ") %>% dplyr::select(-del) %>% separate(Date, into=c("MonthCollected", "DayCollected", "YearCollected"), sep="/") 
-=======
-#If the survey_site_id is 60, 108, 131, or 171, 
-#manually assign the decimal lat and long from the location table fields DecimalLatitude and DecimalLongitude and DecminLatitude and DecminLongitude
-PSSS$DecimalLatitude[PSSS$site_code==60]<-47.12093
-PSSS$DecimalLongitude[PSSS$site_code==60]<--122.77609
-PSSS$DecimalLatitude[PSSS$site_code==108]<-47.16545
-PSSS$DecimalLongitude[PSSS$site_code==108]<--122.80804
-PSSS$DecimalLatitude[PSSS$site_code==131]<-47.596750
-PSSS$DecimalLongitude[PSSS$site_code==131]<--122.541700
-PSSS$DecimalLatitude[PSSS$site_code==171]<-48.61269
-PSSS$DecimalLongitude[PSSS$site_code==171]<--123.09778
+# #break apart survey_date and reform into day, month, year
+# PSSS<-PSSS %>% separate(survey_date, into=c("Date", "del"), sep=" ") %>% dplyr::select(-del) %>% separate(Date, into=c("MonthCollected", "DayCollected", "YearCollected"), sep="/") 
 
 #break apart survey_date and reform into day, month, year
 PSSS<-PSSS %>% separate(survey_date, into=c("Date", "del"), sep=" ") %>% dplyr::select(-del) %>% 
   separate(Date, into=c("MonthCollected", "DayCollected", "YearCollected"), sep="/") 
->>>>>>> ac9ff8d3f9e54809d83bbe2a893e70450ad45e4a
+
 
 #wrangle raptor data into the long format since each species identification should be in a unique row. 
 raptor1<-PSSS %>% filter(!is.na(raptor1)) %>% mutate(common_name = raptor1, bird_count = raptor1_count, notes= raptor1_affect)%>%  dplyr::select(-raptor1, -raptor2, -raptor3, -raptor1_count, -raptor2_count, -raptor3_count, -raptor1_affect, -raptor2_affect, -raptor3_affect) 
@@ -99,11 +86,8 @@ PSSS<-PSSS %>% mutate(common_name = ifelse(common_name == "Thayer's Gull", "Ivor
 PSSS<-merge(PSSS, sp, by.x=c("common_name"), by.y= ("english_name"), all.x=TRUE)
 
 #rename data columns to match BMDE
-<<<<<<< HEAD
+
 PSSS<-PSSS %>% dplyr::rename(CommonName = common_name, SurveyAreaIdentifier= site_code, Locality = site_name, MinimumElevationInMeters=elevation, MaximumElevationInMeters=elevation, TimeCollected = start_time, TimeObservationsEnded=end_time, ObservationCount = bird_count, ObservationCount2=large_flock_best, ObsCountAtLeast = large_flock_min, ObsCountAtMost = large_flock_max, FieldNotes=notes, Collector = name, ScientificName=scientific_name, SpeciesCode=species_code, AllSpeciesReported=is_complete)
-=======
-PSSS<-PSSS %>% dplyr::rename(CommonName =common_name, SurveyAreaIdentifier= site_code, Locality = site_name, MinimumElevationInMeters=elevation, MaximumElevationInMeters=elevation, TimeCollected = start_time, TimeObservationsEnded=end_time, ObservationCount = bird_count, ObservationCount2=large_flock_best, ObsCountAtLeast = large_flock_min, ObsCountAtMost = large_flock_max, FieldNotes=notes, Collector = name, ScientificName=scientific_name, SpeciesCode=species_code, AllSpeciesReported=is_complete)
->>>>>>> ac9ff8d3f9e54809d83bbe2a893e70450ad45e4a
 
 PSSS$RouteIdentifier<-PSSS$SurveyAreaIdentifier
 PSSS$BasisOfRecord <- "Observation"
@@ -124,8 +108,8 @@ PSSS$InstitutionCode<-"PSBO"
 PSSS$CatalogNumber<-PSSS$survey_id
 PSSS<-PSSS %>% mutate(GlobalUniqueIdentifier = paste0("URN:catalog:", InstitutionCode, ":", CollectionCode, ":", CatalogNumber, sep=""))
 PSSS<-PSSS %>% mutate(ObservationDate = paste0(YearCollected, "-", MonthCollected, "-", DayCollected, sep=""))
-PSSS$DecimalLatitude<-round(as.numeric(PSSS$DecimalLatitude, 4))
-PSSS$DecimalLongitude<-round(as.numeric(PSSS$DecimalLongitude, 4))
+PSSS$DecimalLatitude<-as.numeric(PSSS$DecimalLatitude)
+PSSS$DecimalLongitude<-as.numeric(PSSS$DecimalLongitude)
 
 #Now that we have specified all the data columns we can, we will create the BMDE standardized data table. 
 

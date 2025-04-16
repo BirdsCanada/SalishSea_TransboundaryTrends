@@ -1,7 +1,7 @@
 #Code used to clean the BCCWS and prepare it for analysis 
 
 #Created by Danielle Ethier
-#December 2024
+#Last Edited April 2025
 
 
 in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database 
@@ -13,27 +13,15 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   
   in.BCCWS$ObservationCount<-as.numeric(in.BCCWS$ObservationCount3)  ##WILL WANT TO KEEP JUST THE NEARSHORE DATA TO MAKE THIS COMPARABLE TO PSSS
   
-  if(!(is.null(sp.code$authority))) {
-    sp.code<-sp.code %>% filter(authority=="BSCDATA") %>% dplyr::select(-authority, -species_id2, -rank) %>% distinct()
-  } 
+  # if(!(is.null(sp.code$authority))) {
+  #   sp.code<-sp.code %>% filter(authority=="BSCDATA") %>% dplyr::select(-authority, -species_id2, -rank) %>% distinct()
+  # } 
   
   sp.tax<-sp.tax %>% dplyr::select(species_id, scientific_name, english_name) %>% distinct()
   sp<-left_join(sp.code, sp.tax, by="species_id")
   sp<-sp %>% distinct(english_name, .keep_all = TRUE)
   
-  in.BCCWS<-merge(in.BCCWS, sp, by.x=c("CommonName"), by.y= ("english_name"), all.x=TRUE) ###Are we loosing the .sp and hybrids doing this. Need to check. 
-  
-  
-  #Thayer's Gull missing SpeciesCode. Need to assign here species_id == 5190
-  in.BCCWS$SpeciesCode<-as.character(in.BCCWS$SpeciesCode)
-  in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5190] <- "ICGU"  ## CHANGE "Iceland Gull (Thayer's)" TO "Ivory Gull"
-
-  ##MEW GULL NEEDS CHANGE TO SHORT BILLED GULL IN THE DATA
-  ##This has two species_id 5140 and 5142
-  in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5140] <- "SBIG"
-  in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5142] <- "SBIG"
-  in.BCCWS$SpeciesCode<-as.factor(in.BCCWS$SpeciesCode)
-  in.BCCWS <- subset(in.BCCWS, !is.na(SpeciesCode))
+  in.BCCWS<-merge(in.BCCWS, sp, by.x=c("CommonName"), by.y= ("english_name"), all.x=TRUE) 
   
   # filter data by months October to April
   in.BCCWS <- subset(in.BCCWS, MonthCollected %in% c(10:12, 1:4))
@@ -66,24 +54,24 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # Specifically, any value that is < 6 AM I will add 12 to bring it into 24 hour time.
   in.BCCWS$TimeObservationsEnded <- as.numeric(in.BCCWS$TimeObservationsEnded)
   in.BCCWS$TimeObservationsStarted <- as.numeric(in.BCCWS$TimeObservationsStarted)
-  in.BCCWS$TimeObservationsEnded <- ifelse(in.BCCWS$TimeObservationsEnded < 7, in.BCCWS$TimeObservationsEnded + 12, in.BCCWS$TimeObservationsEnded)
-  in.BCCWS$TimeObservationsStarted <- ifelse(in.BCCWS$TimeObservationsStarted < 7, in.BCCWS$TimeObservationsStarted + 12, in.BCCWS$TimeObservationsStarted)
+  in.BCCWS$TimeObservationsEnded <- ifelse(in.BCCWS$TimeObservationsEnded < 6, in.BCCWS$TimeObservationsEnded + 12, in.BCCWS$TimeObservationsEnded)
+  in.BCCWS$TimeObservationsStarted <- ifelse(in.BCCWS$TimeObservationsStarted < 6, in.BCCWS$TimeObservationsStarted + 12, in.BCCWS$TimeObservationsStarted)
 
   # Remove TimeObservationEnds that is >24:59 hours
   in.BCCWS <- in.BCCWS %>% filter(TimeObservationsEnded < 24.59)
-  # If the TimeObservationStart is >= 18:00 and the TimeObservationEnds <= 10.68, add 12 to the TimeObservationEnds
-  in.BCCWS$TimeObservationsEnded <- ifelse(in.BCCWS$TimeObservationsStarted >= 18 & in.BCCWS$TimeObservationsEnded <= 10.68, in.BCCWS$TimeObservationsEnded + 12, in.BCCWS$TimeObservationsEnded)
-
+  # Remove negative DurationInHours
+  in.BCCWS <- in.BCCWS %>% filter(DurationInHours>0)
   # recalculate duration in hours using the start and end times
-  # First make sure these are time fields for that the calculation happens correclty
-  in.BCCWS$DurationInHours2 <- calculate_duration(in.BCCWS$TimeObservationsEnded, in.BCCWS$TimeObservationsStarted)
-
-  # if DurationinHours is negative, we want to swap the survey start time and survey end time as they seem to be reversed.
-  in.BCCWS<- in.BCCWS %>% mutate(TimeObservationsStarted2= ifelse(in.BCCWS$DurationInHours2 < 0, TimeObservationsEnded, TimeObservationsStarted), TimeObservationsEnded2= ifelse(in.BCCWS$DurationInHours2 < 0, TimeObservationsStarted, TimeObservationsEnded))
-
-  # recalculate duration in hours using the start and end times
-  in.BCCWS$DurationInHours <- calculate_duration(in.BCCWS$TimeObservationsEnded2, in.BCCWS$TimeObservationsStarted2)
   
+  # # First make sure these are time fields for that the calculation happens correclty
+  # in.BCCWS$DurationInHours2 <- calculate_duration(in.BCCWS$TimeObservationsEnded, in.BCCWS$TimeObservationsStarted)
+  # 
+  # # if DurationinHours is negative, we want to swap the survey start time and survey end time as they seem to be reversed.
+  # in.BCCWS<- in.BCCWS %>% mutate(TimeObservationsStarted2= ifelse(in.BCCWS$DurationInHours2 < 0, TimeObservationsEnded, TimeObservationsStarted), TimeObservationsEnded2= ifelse(in.BCCWS$DurationInHours2 < 0, TimeObservationsStarted, TimeObservationsEnded))
+  # 
+  # # recalculate duration in hours using the start and end times
+  # in.BCCWS$DurationInHours <- calculate_duration(in.BCCWS$TimeObservationsEnded2, in.BCCWS$TimeObservationsStarted2)
+  # 
   # remove rows with missing DurationInHours
   in.BCCWS <- in.BCCWS %>% filter(!is.na(DurationInHours))
   # remove missing SurveyAreaIdentifier
@@ -94,13 +82,9 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   in.BCCWS <- in.BCCWS %>% filter(DecimalLatitude >= 45.06 & DecimalLatitude <= 50.64 & DecimalLongitude >= -125.07 & DecimalLongitude <= -115.15)
   #remove the sampling point on the outside coastal edge of Vaconcover Island which in <-124 DecimialLongitude and <48.5 DecimialLatitude
   in.BCCWS <- in.BCCWS %>% filter(!(DecimalLatitude < 48.5 & DecimalLongitude < -124))
-  
   #Filter Duration in hours greater than 0.3 and less than 10
   in.BCCWS<-in.BCCWS[in.BCCWS$DurationInHours > 0.3 & in.BCCWS$DurationInHours < 10,]
-  
-  # removed NA ObservationCounts
-  in.BCCWS <- in.BCCWS %>% filter(!is.na(ObservationCount))
-  
+
   # create an events matrix for future zero filling
   event.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
   # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum. Technically, each form should have a single value for durination in hours. 
@@ -108,9 +92,59 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # ensure that each SurveyAreaIdentifier has a single decimal latitude and longitude. If multiple, take the first
   event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier) %>% slice_min(DecimalLatitude) %>% ungroup()
   
+  # removed NA ObservationCounts
+  # in.BCCWS <- in.BCCWS %>% filter(!is.na(ObservationCount))
+  
   # retain columns that are needed for the analysis
   in.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
 
+  #remove species that are detected less than 10 times over all years
+  sample<-in.BCCWS %>% group_by(CommonName) %>% summarise(n_tot = sum(ObservationCount, na.rm=TRUE)) %>% filter(n_tot>10)
+  sample<-sample %>% filter(CommonName != "") %>% select(-n_tot)
+  list<-sample$CommonName
+  in.BCCWS<-in.BCCWS %>% filter(CommonName %in% list)
+  
+ 
+  #Group some species that are hard to identity
+  in.BCCWS <- in.BCCWS %>%
+    mutate(
+      CommonName = case_match(
+        CommonName,
+        c("gull (large)",  "Iceland Gull", 	"Iceland Gull (Thayer's)", "Western x Glaucous-winged Gull (hybrid)" , "Glaucous Gull", "Glaucous-winged Gull", "Western Gull", "Herring Gull", "Iceland (Thayer's) Gull", "Iceland (Thayer's Gull)", "WEGU x GWGU hybrid", "California Gull") ~ "Large Gull",
+        .default = CommonName), 
+      CommonName = case_match(
+        CommonName,
+        c("scaup sp.", "Lesser Scaup", "Greater Scaup", "Greater/Lesser Scaup") ~ "Greater/Lesser Scaup",
+        .default = CommonName
+      ), 
+      CommonName = case_match(
+        CommonName,
+        c("Eared Grebe", "Horned Grebe") ~ "Eared/Horned Grebe",
+        .default = CommonName
+      ), 
+      CommonName = case_match(
+        CommonName,
+        c("Canada Goose", "Cackling Goose") ~ "Canada/Cackling Goose",
+        .default = CommonName
+      ), 
+      CommonName = case_match(
+        CommonName,
+        c("Clark's Grebe", "Western Grebe") ~ "Western/Clark's Grebe",
+        .default = CommonName
+      ))
+  
+  #   #clean up the species list
+  # #Thayer's Gull missing SpeciesCode. Need to assign here species_id == 5190
+  # in.BCCWS$SpeciesCode<-as.character(in.BCCWS$SpeciesCode)
+  # in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5190] <- "ICGU"  ## CHANGE "Iceland Gull (Thayer's)" TO "Ivory Gull"
+  # 
+  # ##MEW GULL NEEDS CHANGE TO SHORT BILLED GULL IN THE DATA
+  # ##This has two species_id 5140 and 5142
+  # in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5140] <- "SBIG"
+  # in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5142] <- "SBIG"
+  in.BCCWS$SpeciesCode<-as.factor(in.BCCWS$SpeciesCode)
+  in.BCCWS <- subset(in.BCCWS, !is.na(CommonName))
+  
   # write index.data to file
    write.csv(in.BCCWS, "Data/BCCWS.clean.csv")
    write.csv(event.BCCWS, "Data/BCCWS.events.csv")
