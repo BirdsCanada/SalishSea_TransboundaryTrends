@@ -1,5 +1,21 @@
 #Analysis scripts
 
+#Load your saved species data 
+sp.data<-read.csv("Data/sp.data.csv")
+#Load your saved events data which is needed for zero-filling
+events<-read.csv("Data/events.csv")
+
+if(length(species.list) == 1){
+  sp.list<-unique(sp.data$CommonName)
+}else{
+  sp.list<-species.list
+}
+
+#Create a data frame to store the results. 
+#This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
+source("OutputTables1.R")
+
+
 if(site=="BCCWS"){
 
   sp.dat<-sp.data %>% filter(ProjectCode=="BCCWS")
@@ -61,7 +77,7 @@ if(site=="SalishSea"){
     #Now we will check that the minimum data requirements are met. 
     #We will want to ensure that the species was detected a minimum of X times in a year
     #That the species was detected in at least 1/2 of the survey years
-    #And that greater than a certain % of routes has non-zero counts
+    #And that greater than a certain % of sites have non-zero counts
     
     SpeciesMean<- dat %>% group_by(YearCollected) %>% summarize(YearMean = sum(ObservationCount)) %>% ungroup() %>% summarize(MeanMean = mean(YearMean))
     SpeciesMean$NumYears <- n_distinct(dat$YearCollected)
@@ -69,7 +85,7 @@ if(site=="SalishSea"){
     #Now cheek the SpeciesMean object to see if the species meets the minimum data requirements 
     #all the variable must be large than the values min.abundance, min.years, zero.count, if TRUE continue with the analysis
     
-    if(SpeciesMean$MeanMean>=min.abundance & SpeciesMean$NumYears>=min.years & routes>nroutes){
+    if(SpeciesMean$MeanMean>=min.abundance & SpeciesMean$NumYears>=min.years & routes>nsites){
   min.data <- TRUE 
       }else{
   min.data <- FALSE

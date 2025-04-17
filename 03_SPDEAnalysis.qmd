@@ -14,7 +14,7 @@ A first assessment of coastal waterbird trends will be done for the full extent 
 
 The first step is to run the analysis for the full extent of the Salish Sea, or for each country separately. Species are only included in an analysis if they meet the minimum data requirements, which are detailed below.
 
-We approached this analysis using a spatially varying coefficient approach (SVC, Gelfand et al. 2003) which allowed for information on abundance and trends to be shared between geographic locations. Specifically, we used a continuous space triangulated model mesh and a stochastic partial differential equation (SPDE) approach (Lindgren et al. 2022). Duration in hours was included as a covariate to account for differences in sampling effort. A first-order autoregressive model was used to account for temporal autocorrelation in counts based on the day of year (doy_idx). A random effect was included to account for Routes level effects.
+We approached this analysis using a spatially varying coefficient approach (SVC, Gelfand et al. 2003) which allowed for information on abundance and trends to be shared between geographic locations. Specifically, we used a continuous space triangulated model mesh and a stochastic partial differential equation (SPDE) approach (Lindgren et al. 2022). Duration in hours was included as a covariate to account for differences in sampling effort. A first-order autoregressive model was used to account for temporal autocorrelation in counts based on the day of year (doy_idx). A random effect was included to account for site level effects.
 
 The basic model formula is as follows:
 
@@ -30,39 +30,42 @@ source("00_Setup.R")
 
 #Manually Specify the start and end year of the analysis. These years should match those selected for the data cleaning scripts. 
 Y1 = 2008
-Y2 = 2022
+Y2 = 2024
 
 ```
 
-### 3.1 Load and Prepare Data
+### 3.1  Set Analysis Conditions
+
+Here the user has several customization options.
+
+-   Select the study area.
+
+-   For a species-specific analysis, select the species you wish to analyse.
+
+-   For a guild-specific analysis, select the guild you wish to analyse, and the species will be used as a random effect in the model.
+
+-   Set the minimum data requirements.
+
+-   Set the distributional family
 
 ```{r}
 
 #Define your `site` as either "SalishSea", "BCCWS" or "PSSS".
-site <- "SalishSea"
+area <- "SalishSea"
 
-#Load your saved species data 
-sp.data<-read.csv("Data/sp.data.csv")
+#Create a list of species using all available species in the shared dataset
+species.list<-"ALL"
 
-#Create a list of species
-sp.list<-unique(sp.data$SpeciesCode)
-#Or you can manually select species
-#sp.list <- c("AMWI", "GRSC") 
-
-#Load your saved events data which is needed for zero-filling
-events<-read.csv("Data/events.csv")
-
-#Create a data frame to store the results. 
-#This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
-source("OutputTables1.R")
+#Or you can manually select species.
+#species.list <- c("American Wigeon", "Common Loon", "Large Gull") 
 
 #Select the minimum data requirements for the analysis. The ones selected here were done following the inspection of the International data set and likely work both the National analyses. However, finer scale assessment may need to assess their suitability. 
 
-#Here, the minimum data required across routes with at least one detection, each species needs an overall abundance per year > 10, need to be detected in > one-half of the survey years, and on > 10 survey routes. Users may choose to adjust these parameters. 
+#Here, the minimum data required across routes with at least one detection, each species needs an overall abundance per year > 10, need to be detected in > one-half of the survey years, and on > 10 survey sites. Users may choose to adjust these parameters. 
 
 min.abundance <- 10
 min.years <- (Y2-Y1)/2
-nroutes <- 10
+nsites <- 10
 
 #Set the distributional assumption. Here we select 'nbinomal' but this may need to adjust if there is overdispersion. 
 
