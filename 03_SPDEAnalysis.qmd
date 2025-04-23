@@ -20,7 +20,7 @@ The basic model formula is as follows:
 
 Observation Count \~ -1 + f(kappa, model="iid", hyper=hyper.iid) + f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
 
-\*Duration in hours is included as lof offset in the INLA framework to model the expected count based on a difference in sampling effort.
+\*Duration in hours is included as an offset in the INLA framework to model the expected count based on a difference in sampling effort.
 
 Run setup if starting a new environment.
 
@@ -32,9 +32,14 @@ source("00_Setup.R")
 Y1 = 2008
 Y2 = 2024
 
+#Load your saved species data 
+sp.data<-read.csv("Data/sp.data.csv")
+#Load your saved events data which is needed for zero-filling
+events<-read.csv("Data/events.csv")
+
 ```
 
-### 3.1  Set Analysis Conditions
+### 3.1 Set Analysis Conditions
 
 Here the user has several customization options.
 
@@ -42,26 +47,55 @@ Here the user has several customization options.
 
 -   For a species-specific analysis, select the species you wish to analyse.
 
--   For a guild-specific analysis, select the guild you wish to analyse, and the species will be used as a random effect in the model.
+To view your options of species:
+```{r sp}
+
+species<-unique(sp.data$CommonName)
+view(species)
+
+```
+
+-   For a guild-specific analysis, select the guild you wish to analyse (i.e., migration, diet, or family), and the species will be used as a random effect in the model.
+
+To view your option of guilds:
+```{r guild}
+
+migration<-unique(sp.data$Migration)
+view(migration)
+
+diet<-unique(sp.data$Diet)
+view(diet)
+
+family<-unique(sp.data$family_name)
+view(family)
+
+```
 
 -   Set the minimum data requirements.
 
--   Set the distributional family
+-   Set the distributional family.
+
+**Note: R is case sensitive so please type your variable names carefully and as specified below**
 
 ```{r}
 
-#Define your `site` as either "SalishSea", "BCCWS" or "PSSS".
+#Define your `site` as either "SalishSea", "BCCWS" or "PSSS". 
 area <- "SalishSea"
 
-#Create a list of species using all available species in the shared dataset
+#Create a list of species using all available species in the shared dataset.
 species.list<-"ALL"
 
 #Or you can manually select species.
 #species.list <- c("American Wigeon", "Common Loon", "Large Gull") 
 
+#If you wish to do a guild-specific analysis, change to "Yes" and specify the `type` as either "migration", "diet", or "family". This will override the species list above. 
+
+guild <- "No"
+type <-"family"
+
 #Select the minimum data requirements for the analysis. The ones selected here were done following the inspection of the International data set and likely work both the National analyses. However, finer scale assessment may need to assess their suitability. 
 
-#Here, the minimum data required across routes with at least one detection, each species needs an overall abundance per year > 10, need to be detected in > one-half of the survey years, and on > 10 survey sites. Users may choose to adjust these parameters. 
+#Here, the minimum data required across sites with at least one detection, each species needs an overall abundance per year > 10, need to be detected in > one-half of the survey years, and on > 10 survey sites. Users may choose to adjust these parameters. 
 
 min.abundance <- 10
 min.years <- (Y2-Y1)/2

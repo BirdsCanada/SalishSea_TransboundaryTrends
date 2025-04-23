@@ -1,9 +1,9 @@
 #Analysis scripts
 
-#Load your saved species data 
-sp.data<-read.csv("Data/sp.data.csv")
-#Load your saved events data which is needed for zero-filling
-events<-read.csv("Data/events.csv")
+# #Load your saved species data 
+# sp.data<-read.csv("Data/sp.data.csv")
+# #Load your saved events data which is needed for zero-filling
+# events<-read.csv("Data/events.csv")
 
 if(length(species.list) == 1){
   sp.list<-unique(sp.data$CommonName)
@@ -11,19 +11,20 @@ if(length(species.list) == 1){
   sp.list<-species.list
 }
 
+
 #Create a data frame to store the results. 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 source("OutputTables1.R")
 
 
-if(site=="BCCWS"){
+if(area=="BCCWS"){
 
   sp.dat<-sp.data %>% filter(ProjectCode=="BCCWS")
   event<-events %>% filter(ProjectCode=="BCCWS")
   
 }  
 
-if(site=="PSSS"){
+if(area=="PSSS"){
   
   sp.dat<-sp.data %>% filter(ProjectCode=="PSSS")
   event<-events %>% filter(ProjectCode=="PSSS")
@@ -34,29 +35,65 @@ if(site=="PSSS"){
 } 
 
 #Specify the spatial extent of the analysis
-if(site=="SalishSea"){
+if(area=="SalishSea"){
   
   sp.dat<-sp.data 
   event<-events
 
 }
-  
-  #Create a loop for the species list
+
+#If guild is set to "Yes" this will override the species list above.   
+if(guild=="Yes"){
+  if(type == "migration"){
+  sp.list<-unique(sp.data$Migration)
+  colnames(sp.dat)[colnames(sp.dat) == "Migration"] <- "Guild"
+    }
+  if(type=="diet"){
+  sp.list<-unique(sp.data$Diet)
+  colnames(sp.dat)[colnames(sp.dat) == "Diet"] <- "Guild"
+  }
+  if(type=="family"){
+  sp.list<-unique(sp.data$family_name)  
+  colnames(sp.dat)[colnames(sp.dat) == "family_name"] <- "Guild"
+  }
+}  
+
+#Create a loop for the species list
   for(i in 1:length(sp.list)){
     
     #i<-1 #for testing
+    
+    if(guild =="Yes"){
+    dat <- sp.dat %>% filter(Guild==sp.list[i])
+    dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, .keep_all = TRUE)
+    sp.code<-sp.list[i]
+    dat$SpeciesCode<-sp.list[i]
+    species_name<- type
+    species_sci_name<- " "
+    sp.id<- " "
+ 
+    }else{
     
     #Subset the data for the species
     dat <- sp.dat %>% filter(SpeciesCode==sp.list[i])
     dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, .keep_all = TRUE)
     sp.code<-sp.list[i]
+    dat$SpeciesCode<-sp.list[i]
+    
+    ##Assign species names
+    sp.codes<-meta_species_codes()
+    sp.codes<-sp.codes %>% filter(authority=="BSCDATA") %>% dplyr::select(species_id, species_code)
+    sp.id<-sp.codes$species_id[sp.codes$species_code==sp.list[i]]
+    sp.names<-meta_species_taxonomy()
+    species_name<-sp.names$english_name[sp.names$species_id==sp.id]
+    species_sci_name<-sp.names$scientific_name[sp.names$species_id==sp.id]
+    }
     
 ##zero-fill the dat using the events dataframe##
     dat<-left_join(event, dat, by= c("ProjectCode", "SurveyAreaIdentifier", "wyear", "YearCollected", "MonthCollected", "DayCollected"))
 #Observation Counts will be backfilled with a 0 whenever it is NA
     dat$ObservationCount[is.na(dat$ObservationCount)]<-0
-    dat$SpeciesCode<-sp.list[i]
-
+  
 #remove extreme outliers 
     outlier<-(quantile(dat$ObservationCount, probs = c(0.99)))*3
     dat<-dat %>% filter(ObservationCount<outlier)
@@ -95,46 +132,53 @@ if(site=="SalishSea"){
     
     #only continue if the species meets the minimum data requirements      
 if(min.data==TRUE){
-    
-##Assign species names
-  sp.codes<-meta_species_codes()
-  sp.codes<-sp.codes %>% filter(authority=="BSCDATA") %>% dplyr::select(species_id, species_code)
-  sp.id<-sp.codes$species_id[sp.codes$species_code==sp.list[i]]
-  
-  sp.names<-meta_species_taxonomy()
-  species_name<-sp.names$english_name[sp.names$species_id==sp.id]
-  species_sci_name<-sp.names$scientific_name[sp.names$species_id==sp.id]
-  
-###Model without spatail effect on abundance 
+
+###Model without spatial effect on abundance 
     
 #Create index variables
     dat <- dat %>% mutate( 
       std_yr = wyear - Y2,
       kappa = as.integer(factor(dat$SurveyAreaIdentifier)),
       year_idx = as.integer(wyear),
-      doy_idx = as.integer(doy))%>%
-      st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE) 
-      # st_transform(epsg6703km) %>%
-      #   mutate(
-      #     easting = st_coordinates(.)[, 1],
-      #     northing = st_coordinates(.)[, 2]) %>%
+      doy_idx = as.integer(doy), 
+      sp_idx = as.integer(factor(CommonName)))%>%
+      st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE) %>% 
+      st_transform(epsg6703km) %>%
+        mutate(
+          easting = st_coordinates(.)[, 1],
+          northing = st_coordinates(.)[, 2]) %>%
+        arrange(SurveyAreaIdentifier, wyear)
     
-      dat <- st_transform(dat, crs = utm_crs) %>%
-      mutate(
-        easting = st_coordinates(.)[, 1]/1000,
-        northing = st_coordinates(.)[, 2]/1000) %>%
-      arrange(SurveyAreaIdentifier, wyear)
-  
+      # dat <- st_transform(dat, crs = utm_crs) %>%
+      # mutate(
+      #   easting = st_coordinates(.)[, 1]/1000,
+      #   northing = st_coordinates(.)[, 2]/1000) %>%
+      # arrange(SurveyAreaIdentifier, wyear)
+    
+   
     #Set prior for the random effects
     prec.prior<- list(prec = list(prior = "gaussian", param=c(0,0.1))) 
     hyper.iid<-list(prec=list(prior="pc.prec", param=c(2,0.05)))
     inla.setOption(scale.model.default=TRUE)
     
-    formula<- ObservationCount ~ -1 + 
-      f(kappa, model="iid", hyper=hyper.iid) + f(year_idx, model = "ar1", hyper=prec.prior) + 
+   if(guild=="Yes"){
+     
+     dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
+     
+     formula<- ObservationCount ~ -1 + 
+       #f(kappa, model="iid", hyper=hyper.iid) +  
+       f(sp_idx, model="iid", hyper=hyper.iid)+ f(year_idx, model = "ar1", hyper=prec.prior) + 
+       f(doy_idx, model = "ar1", hyper=prec.prior)
+     
+   }else{
+    
+     formula<- ObservationCount ~ -1 + 
+      #f(kappa, model="iid", hyper=hyper.iid) + 
+      f(year_idx, model = "ar1", hyper=prec.prior) + 
       f(doy_idx, model = "ar1", hyper=prec.prior)
 
-    M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
+   }
+      M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
                  control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE), verbose =TRUE), silent = T)
     
 
@@ -147,11 +191,11 @@ if(min.data==TRUE){
     print(paste("Dispersions Statistic out1 = ", Dispersion1, sep = ""))
 
     #write the dispersion statistic to the output file
-    dispersion.csv$area_code<-site
+    dispersion.csv$area_code<-area
     dispersion.csv$SpeciesCode<-sp.list[i]
     dispersion.csv$dispersion<-Dispersion1
     
-    write.table(dispersion.csv, file = paste(out.dir,  site, "_DispersionStat.csv", sep = ""),
+    write.table(dispersion.csv, file = paste(out.dir,  area, "_DispersionStat.csv", sep = ""),
                 col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
     
     dat$mu1<-mu1
@@ -161,7 +205,7 @@ if(min.data==TRUE){
       geom_abline(intercept = 0, slope = 1)
     
     # Save the plot with specified width, height, and dpi
-    ggsave(filename = paste(plot.dir, site, sp.list[i], "_FitPlot.jpeg", sep = ""), 
+    ggsave(filename = paste(plot.dir, area, sp.list[i], "_FitPlot.jpeg", sep = ""), 
            plot = q, 
            width = 8,    # Adjust width as needed
            height = 6,   # Adjust height as needed
@@ -194,18 +238,28 @@ if(min.data==TRUE){
        # Change legend lable
        scale_size_continuous(name = "Mean Observation Count")
 
-     ggsave(paste(plot.dir, site, sp.list[i], "_SumCountPlot.jpeg", sep = ""), plot = p, width = 10, height = 6, units = "in")
+     ggsave(paste(plot.dir, area, sp.list[i], "_SumCountPlot.jpeg", sep = ""), plot = p, width = 10, height = 6, units = "in")
 
 #create the datframe of covariates
 N<-nrow(dat)
 
+    if(guild=="Yes"){
+      
+      Covariates<- data.frame(
+        Intercept=rep(1, N),
+       # kappa = dat$kappa,
+        sp_idx = dat$sp_idx,
+        doy_idx = dat$doy_idx
+      )
+      
+    }else{
+
     Covariates<- data.frame(
       Intercept=rep(1, N),
-      #DurationInHours=dat$DurationInHours,
-      kappa = dat$kappa,
-      #year_idx = dat$year_idx,
+    #  kappa = dat$kappa,
       doy_idx = dat$doy_idx
     )
+    }
 
     #Create the Mesh
     #Make a set of distinct study sites for mapping
@@ -260,18 +314,28 @@ N<-nrow(dat)
       )
     )
     
-    formula.sp<- count ~ -1 + Intercept +
-      f(kappa, model="iid", hyper=hyper.iid) + f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
-       
+    
+    if(guild=="Yes"){
+      
+      formula.sp<- count ~ -1 + Intercept +
+      # f(kappa, model="iid", hyper=hyper.iid) +
+      f(sp_idx, model="iid", hyper=hyper.iid) + f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
+    
+      }else{
+    
+     formula.sp<- count ~ -1 + Intercept +
+      # f(kappa, model="iid", hyper=hyper.iid) + 
+      f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
+    }   
 
 
-    #fit the non-spatial model using INLA
+    #fit the spatial model using INLA
     M1<-inla(formula.sp, family = fam, data = inla.stack.data(Stack), offset = log(dat$DurationInHours),
                     control.predictor = list(A=inla.stack.A(Stack)),
                     control.compute = list(dic=TRUE, waic=TRUE, config = TRUE),
                     verbose =TRUE)
 
-    #Compare the DIC and WIC values
+  #Compare the DIC and WIC values
    z.out<-NULL
    dic<-c(M0$dic$dic, M1$dic$dic)
    wic<-c(M0$waic$waic, M1$waic$waic)
@@ -280,7 +344,7 @@ N<-nrow(dat)
    z.out<-as.data.frame(z.out)
    z.out$SpeciesCode<-sp.code
 
-   write.table(z.out, file = paste(out.dir,  site, "ModelComparison.csv", sep = ""),
+   write.table(z.out, file = paste(out.dir,  area, "ModelComparison.csv", sep = ""),
                col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
    
 
@@ -312,7 +376,7 @@ years = paste(min(dat$YearCollected), "-", max(dat$YearCollected), sep = ""),
 year = wyear,
 period ="all years",
 season = "winter",
-area_code = site,
+area_code = area,
 model_type = "GLM DOY AR1 ALPHA+TAU SPATIAL",
 species_id=sp.id,
 species_name=species_name,
@@ -329,7 +393,7 @@ family=fam,
 results_code = "BCCWS+PSSS",
 version = "2025",
 season="Winter",
-area_code=site,
+area_code=area,
 trend_index="") #look at CMMN code to generate in next round of analysis
 
 # Run LOESS function
@@ -340,13 +404,15 @@ indices.csv<-indices.csv %>% dplyr::select(results_code, version, area_code, sea
 
 # Write data to table
 write.table(indices.csv, 
-            file = paste(out.dir,	site, "_AnnualIndices.csv", sep = ""),
+            file = paste(out.dir,	area, "_AnnualIndices.csv", sep = ""),
             row.names = FALSE, 
             append = TRUE, 
             quote = FALSE, 
             sep = ",", 
             col.names = FALSE)
 
+
+  
 
 ##TRENDS: SPECIFIC TO  SPECIES and TIME PERIOD
 #AUTO-GENERATE TIME PERIODS TO ANALYZE TRENDS
@@ -355,6 +421,7 @@ nyears=length(unique(dat$wyear))
 list.years<-unique(dat$wyear)
 rev.years<-rev(list.years)
 
+if(guild=="No"){
 #Generate all-years, 10 years, 20 years and 3 generation length.
 
 #Fetch the generation length from the NatureCounts Database
@@ -427,6 +494,20 @@ if(is.na(time.period)) {
   }
   
 } # end is.na(time.period) 
+} # end if guild == No
+
+if(guild=="Yes"){
+  endyr <- max(dat$wyear)
+  startyr <- min(dat$wyear)
+  totyr<- endyr-startyr
+  
+  time.period = "all years"
+  Y1.trend <- startyr
+  Y2.trend <- endyr
+  y1.trend <- 1
+  y2.trend <- nyears
+  
+}
 
 for(p in 1:length(time.period)) {
   
@@ -455,7 +536,7 @@ for(p in 1:length(time.period)) {
            period =period,
            season = "winter",
            results_code = "BCCWS+PSSS",
-           area_code = site,
+           area_code = area,
            version=2025, 
            species_code = sp.code,
            species_id=sp.id, 
@@ -506,7 +587,7 @@ for(p in 1:length(time.period)) {
   write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
   
   write.table(write.trend, 
-              file = paste(out.dir, site, "_TrendsEndpoint.csv", sep = ""), 
+              file = paste(out.dir, area, "_TrendsEndpoint.csv", sep = ""), 
               row.names = FALSE, 
               append = TRUE, 
               quote = FALSE, 
@@ -548,7 +629,7 @@ for(p in 1:length(time.period)) {
   
   
   write.table(write.trend, 
-              file = paste(out.dir, site, "_TrendsSlope.csv", sep = ""), 
+              file = paste(out.dir, area, "_TrendsSlope.csv", sep = ""), 
               row.names = FALSE, 
               append = TRUE, 
               quote = FALSE, 
@@ -561,7 +642,7 @@ for(p in 1:length(time.period)) {
   # get easting and northing limits
   xlim <- range(Bound$loc[, 1])
   ylim <- range(Bound$loc[, 2])
-  grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 10) #10 km mapping grid
+  grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 25) #10 km mapping grid
 
   # make mesh projector to get model summaries from the mesh to the mapping grid
   mesh_proj <- inla.mesh.projector(
@@ -569,11 +650,19 @@ for(p in 1:length(time.period)) {
     xlim = xlim, ylim = ylim, dims = grd_dims)
 
     # pull data
-    kappa <- data.frame(
-      median = exp(M1$summary.random$kappa$"0.5quant"),
-      range95 = exp(M1$summary.random$kappa$"0.975quant") -
-        exp(M1$summary.random$kappa$"0.025quant")
+    # kappa <- data.frame(
+    #   median = exp(M1$summary.random$kappa$"0.5quant"),
+    #   range95 = exp(M1$summary.random$kappa$"0.975quant") -
+    #     exp(M1$summary.random$kappa$"0.025quant")
+    # )
+    # 
+    if(guild=="Yes"){
+    sp_idx <- data.frame(
+      median = exp(M1$summary.random$sp_idx$"0.5quant"),
+      range95 = exp(M1$summary.random$sp_idx$"0.975quant") -
+        exp(M1$summary.random$sp_idx$"0.025quant")
     )
+    }
 
      alph <- data.frame(
       median = exp(M1$summary.random$alpha$"0.5quant"),
@@ -612,18 +701,18 @@ for(p in 1:length(time.period)) {
     names(out_stk) <- c("alpha_median", "alpha_range95", "tau_median", "tau_range95")
     
     #load backgroud maps (or maps)
-    if(site=="BCCWS"){
+    if(area=="BCCWS"){
     
     canada <- ne_states(country = "canada", returnclass = "sf") 
     map<- canada[canada$name=="British Columbia",]
     }
     
-    if(site=="PSSS"){
+    if(area=="PSSS"){
     us<- ne_states(country = "united states of america", returnclass = "sf") 
     map<- us[us$name=="Washington",]
     }
   
-    if(site=="SalishSea"){
+    if(area=="SalishSea"){
     canada <- ne_states(country = "canada", returnclass = "sf") 
     BC<- canada[canada$name=="British Columbia",]
     
@@ -666,10 +755,10 @@ for(p in 1:length(time.period)) {
       scale_label = "posterior\nrange95\n100(exp(tau_s)-1)"
     )
     
-    # sites kappa_s
-    ps_range95 <- make_plot_site(
-      data = cbind(site_map, data.frame(value = kappa$range95)),
-      scale_label = "posterior\nrange95\nexp(kappa_s)"
+    # # sites kappa_s
+    # ps_range95 <- make_plot_site(
+    #   data = cbind(site_map, data.frame(value = kappa$range95)),
+    #   scale_label = "posterior\nrange95\nexp(kappa_s)"
     )
     
     # plot together
@@ -679,7 +768,7 @@ for(p in 1:length(time.period)) {
     #multiplot(ps_range95, pa_range95, pt_range95, cols = 2)
     
     # plot together
-    multiplot(ps, pa, pt, ps_range95, pa_range95, pt_range95, cols = 2)
+    # multiplot(ps, pa, pt, ps_range95, pa_range95, pt_range95, cols = 2)
     
     pdf(paste(out.dir, sp.list[m], "_spdePlot.pdf", sep=""))
     multiplot(pa, pt)
