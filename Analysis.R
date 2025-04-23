@@ -11,12 +11,6 @@ if(length(species.list) == 1){
   sp.list<-species.list
 }
 
-
-#Create a data frame to store the results. 
-#This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
-source("OutputTables1.R")
-
-
 if(area=="BCCWS"){
 
   sp.dat<-sp.data %>% filter(ProjectCode=="BCCWS")
@@ -245,6 +239,8 @@ N<-nrow(dat)
 
     if(guild=="Yes"){
       
+      dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
+      
       Covariates<- data.frame(
         Intercept=rep(1, N),
        # kappa = dat$kappa,
@@ -278,14 +274,31 @@ N<-nrow(dat)
     #make the mesh this way so that the point fall on the vertices of the lattice
     Loc_all<-dat %>% dplyr::select(easting, northing) %>% st_drop_geometry() %>% as.matrix()
     
-    Bound<-inla.nonconvex.hull(Loc_unique)
-
-    mesh2<-fm_mesh_2d_inla(Loc_unique, 
-                           #mesh2<-inla.mesh.2d(Loc, 
-                           boundary = Bound,
-                           max.edge = c(150, 200), # km inside and outside
-                           cutoff = 0,
-                           crs = fm_crs(dat))
+    map<-st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")  
+    #change the crs of map to epsg6703km
+    map <- st_transform(map, crs = epsg6703km)
+    
+    # Convert sf polygon to SpatialPolygons (sp format)
+    map_sp <- as(map, "Spatial")
+    
+    # Convert to inla.mesh.segment
+    boundary_segment <- inla.sp2segment(map_sp)
+    
+    mesh2<- inla.mesh.2d(Loc_unique,
+      boundary = boundary_segment,  # Your polygon boundary
+      max.edge = c(150, 200),       # Inner/outer resolution (in CRS units)
+      cutoff = 5,                  # Minimum distance between vertices
+      crs = fm_crs(dat)             # Use the same CRS as your data
+    )
+    
+    # Bound<-inla.nonconvex.hull(Loc_unique)
+    # 
+    # mesh2<-fm_mesh_2d_inla(Loc_unique,
+    #                        #mesh2<-inla.mesh.2d(Loc,
+    #                        boundary = Bound,
+    #                        max.edge = c(150, 200), # km inside and outside
+    #                        cutoff = 0,
+    #                        crs = fm_crs(dat))
     #SPDE
     spde <- inla.spde2.pcmatern(  #could also use inla.spde2.pcmatern
       mesh = mesh2,
@@ -639,10 +652,12 @@ for(p in 1:length(time.period)) {
   ####SVC Maps
   ##https://inla.r-inla-download.org/r-inla.org/doc/vignettes/svc.html
 
+  
+  if(area=="SalishSea"){ #only make map if full Salish Sea Analysis
   # get easting and northing limits
   xlim <- range(Bound$loc[, 1])
   ylim <- range(Bound$loc[, 2])
-  grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 25) #10 km mapping grid
+  grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 5) #10 km mapping grid
 
   # make mesh projector to get model summaries from the mesh to the mapping grid
   mesh_proj <- inla.mesh.projector(
@@ -700,33 +715,14 @@ for(p in 1:length(time.period)) {
     
     names(out_stk) <- c("alpha_median", "alpha_range95", "tau_median", "tau_range95")
     
-    #load backgroud maps (or maps)
-    if(area=="BCCWS"){
-    
-    canada <- ne_states(country = "canada", returnclass = "sf") 
-    map<- canada[canada$name=="British Columbia",]
-    }
-    
-    if(area=="PSSS"){
-    us<- ne_states(country = "united states of america", returnclass = "sf") 
-    map<- us[us$name=="Washington",]
-    }
-  
-    if(area=="SalishSea"){
-    canada <- ne_states(country = "canada", returnclass = "sf") 
-    BC<- canada[canada$name=="British Columbia",]
-    
-    us<- ne_states(country = "united states of america", returnclass = "sf") 
-    WA<- us[us$name=="Washington",]
-    
-    map <- rbind(BC, WA)
-    }
-    
-    #change the crs of map to epsg6703km
-    map <- st_transform(map, crs = epsg6703km)
-    
+    map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
+    map<-st_transform(SS_map, crs = epsg6703km)
     out_stk <- terra::mask(out_stk, map, touches = FALSE)
-    
+
+    # #change the crs of map to epsg6703km
+    # map <- st_transform(map, crs = epsg6703km)
+    # out_stk <- terra::mask(out_stk, map, touches = FALSE)
+    # 
     # medians
     # fields alpha_s, tau_s
     pa <- make_plot_field(
@@ -738,12 +734,13 @@ for(p in 1:length(time.period)) {
       data_stk = out_stk[["tau_median"]],
       scale_label = "posterior\nmedian\ntau"
     )
-    # sites kappa_s
-    ps <- make_plot_site(
-      data = cbind(site_map, data.frame(value = kappa$median)),
-      scale_label = "posterior\nmedian\nkappa"
-    )
-    # range95
+    # # sites kappa_s
+    # ps <- make_plot_site(
+    #   data = cbind(site_map, data.frame(value = kappa$median)),
+    #   scale_label = "posterior\nmedian\nkappa"
+    # )
+   
+     # range95
     # fields alpha_s, tau_s
     pa_range95 <- make_plot_field(
       data_stk = out_stk[["alpha_range95"]],
@@ -759,7 +756,7 @@ for(p in 1:length(time.period)) {
     # ps_range95 <- make_plot_site(
     #   data = cbind(site_map, data.frame(value = kappa$range95)),
     #   scale_label = "posterior\nrange95\nexp(kappa_s)"
-    )
+    #)
     
     # plot together
     #multiplot(ps, pa, pt, cols = 2)
@@ -771,9 +768,10 @@ for(p in 1:length(time.period)) {
     # multiplot(ps, pa, pt, ps_range95, pa_range95, pt_range95, cols = 2)
     
     pdf(paste(out.dir, sp.list[m], "_spdePlot.pdf", sep=""))
-    multiplot(pa, pt)
+    multiplot(pa, pt, pa_range95, pt_range95, cols=2)
     while(!is.null(dev.list())) dev.off()
-
+   
+     } # end if Salish Sea
       } #end period loop
     } #end min.data  
   }#end SpeciesLoop

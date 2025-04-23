@@ -116,7 +116,7 @@ PSSS<-read.csv("Data/PSSS.csv")
 
 Now it is time to do some data cleaning before we combine the BCCWS and PSSS datasets. The user has the opportunity here to select the start and end dates of the analysis by changing the Y1 and Y2 variables.
 
-During this process some species are combined following advise from the survey coordinators. These are species that are typically difficult to tell apart and are often misidentified. 
+During this process some species are combined following advise from the survey coordinators. These are species that are typically difficult to tell apart and are often misidentified.
 
 -   "Large Gull" = gull (large) + WEGU + GWGU hybrid + Glaucous-winger + Western + Herring + Glaucous + Iceland (Thayer's) + California Gull
 
@@ -128,9 +128,9 @@ During this process some species are combined following advise from the survey c
 
 -   "Canada/Cackling Goose"
 
-Other non-target species are also removed i.e., any species detected less than 10 times over all years is considered rare and removed. 
+Other non-target species are also removed i.e., any species detected less than 10 times over all years is considered rare and removed.
 
-This part of the code also creates and events martix for each program. This is what is used for zero-filling during the species ir guild specific analysis. 
+This part of the code also creates and events martix for each program. This is what is used for zero-filling during the species ir guild specific analysis.
 
 ```{r}
 
@@ -196,7 +196,7 @@ write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
 
 ## 5. Guild Assignment
 
-The user may be interested in assigning species to Guilds for their analysis. In the Data folder we provide the user with migration and dietary guilds for the 53 species that the survey programs have in common. We can also assign species to family using the NatureCounts metadata. 
+The user may be interested in assigning species to Guilds for their analysis. In the Data folder we provide the user with migration and dietary guilds for the 53 species that the survey programs have in common. We can also assign species to family using the NatureCounts metadata.
 
 ```{r}
 
@@ -309,6 +309,12 @@ midwinter <- st_layers("Data/Spatial/MidwinterAerialSeabirdSurveys.gdb")
 
 #read the layers within the PBHJV_Boundary_08092022.gdb file from the Data/Spatial subfolder
 pbhjv <- st_layers("Data/Spatial/PBHJV_Boundary_08092022.gdb")
+
+
+#Read in the Salish Sea Regional Boundary File
+#Downloaded from here: https://salish-sea-atlas-data-wwu.hub.arcgis.com/
+SS_boundary<-st_read("Data/Spatial/Salish_Sea_Region_Boundary.shp")
+SS_land<-st_read("Data/Spatial/SS_Land.shp")
 
 
 

@@ -112,6 +112,10 @@ fam<-'nbinomial'
 
 ```{r}
 
+#Create an output file to save your results
+#This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
+source("OutputTables1.R")
+
 #Now we can initiate the analysis.  
 source("Analysis.R")
 
