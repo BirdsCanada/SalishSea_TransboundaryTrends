@@ -9,7 +9,7 @@ names(indices.csv) <- c("results_code", "version", "area_code", "season", "perio
 
 
 write.table(indices.csv, file = paste(out.dir, 
-                                      area, "_AnnualIndices2",".csv", sep = ""), 
+                                      name, "_AnnualIndices2",".csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 
@@ -21,12 +21,12 @@ names(trends.csv) <- c("results_code",	"version",	"area_code",	"season",	"period
 
 #Endpoint Trends
 write.table(trends.csv, file = paste(out.dir, 
-                                     area, "_TrendsEndpoint2", ".csv", sep = ""), 
+                                     name, "_TrendsEndpoint2", ".csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 #Slope Trends
 write.table(trends.csv, file = paste(out.dir, 
-                                     area, "_TrendsSlope2", ".csv", sep = ""), 
+                                     name, "_TrendsSlope2", ".csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 ## Create .csv file for dispersion stat
@@ -35,7 +35,7 @@ dispersion.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3, byrow = FA
                                     dimnames = NULL))
 names(dispersion.csv) <- c("area_code", "SpeciesCode", "dispersion")
 
-write.table(dispersion.csv, file = paste(out.dir,  area, "_DispersionStat2.csv", sep = ""), 
+write.table(dispersion.csv, file = paste(out.dir,  name, "_DispersionStat2.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 
@@ -45,6 +45,6 @@ model.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 4, byrow = FALSE,
                                        dimnames = NULL))
 names(model.csv) <- c("ModelType", "DIC", "WIC", "SpeciesCode")
 
-write.table(model.csv, file = paste(out.dir,  area, "ModelComparison2.csv", sep = ""), 
+write.table(model.csv, file = paste(out.dir,  name, "ModelComparison2.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
