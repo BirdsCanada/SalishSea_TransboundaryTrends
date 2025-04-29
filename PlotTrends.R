@@ -3,52 +3,54 @@ sp.tax<-sp.tax %>% dplyr::select(species_id, sort_order, english_name)
 
 #read indices and trends for a specific site
 
-indices<-read.csv(paste(out.dir, site, "_AnnualIndices.csv", sep=""))
-trends.slope<-read.csv(paste(out.dir, site, "_TrendsSlope.csv", sep=""))
-trends.endpt<-read.csv(paste(out.dir, site, "_TrendsEndPoint.csv", sep=""))
+indices<-read.csv(paste(out.dir, name, "_AnnualIndices.csv", sep=""))
+trends.slope<-read.csv(paste(out.dir, name, "_TrendsSlope.csv", sep=""))
+trends.endpt<-read.csv(paste(out.dir, name, "_TrendsEndPoint.csv", sep=""))
 
 ##Prepare trends for plotting
 all.trends<-rbind(trends.slope, trends.endpt)
 #Remove any row with all NA values across all columns
 all.trends <- all.trends[rowSums(is.na(all.trends)) < ncol(all.trends), ]
 all.trends<-all.trends %>% dplyr::select(area_code, period, species_code, species_id, years, trnd, lower_ci, upper_ci, index_type, percent_change) %>% filter(period=="all years")
-all.trends<-left_join(all.trends, sp.tax, by=c("species_id"="species_id"))
 
-slope.trnd<-all.trends %>% filter(index_type=="Slope Trend")
+if(guild == "NO"){
+all.trends<-left_join(all.trends, sp.tax, by=c("species_id"="species_id"))
+} 
+
+slope.trnd<-all.trends %>% filter(index_type=="Slope trend")
 
 sl.trnd <- slope.trnd %>%
-  mutate(sp.trnd = paste(english_name, " \n", "Slope: ", round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
+  mutate(sp.trnd = paste(species_code, " \n", "Slope: ", round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
 
 end.trnd<-all.trends %>% filter(index_type=="Endpoint trend")
 
 ed.trnd <- end.trnd %>%
   mutate(sp.trnd = paste("Endpoint: ", round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
-ed.trnd <- ed.trnd %>% dplyr::select(species_id, sp.trnd)
+ed.trnd <- ed.trnd %>% dplyr::select(species_code, sp.trnd)
 
-sl.trnd<-left_join(sl.trnd, ed.trnd, by="species_id")
+sl.trnd<-left_join(sl.trnd, ed.trnd, by="species_code")
 
 #paste together the two sp.trnd columns
 sl.trnd$sp.trnd<-paste(sl.trnd$sp.trnd.x, sl.trnd$sp.trnd.y, sep="\n")
-sl.trnd<-sl.trnd %>% dplyr::select(species_id, sp.trnd)
-
+sl.trnd<-sl.trnd %>% dplyr::select(species_code, sp.trnd)
 
 #Prepare Indices for plotting
 indices <- indices[rowSums(is.na(indices)) < ncol(indices), ]
 index <- indices %>%
-  dplyr::select(index, upper_ci, lower_ci, LOESS_index, species_id, year, season, area_code) 
+  dplyr::select(index, upper_ci, lower_ci, LOESS_index, species_code, year, season, area_code) 
 
 plot.dat <- NULL
-plot.dat <- full_join(index, sl.trnd, by = c("species_id"), relationship = "many-to-many")
+plot.dat <- full_join(index, sl.trnd, by = c("species_code"), relationship = "many-to-many")
 
-sp.list <- as.character(unique(plot.dat$sp.trnd))
+sp.list2 <- as.character(unique(plot.dat$sp.trnd))
 
 out.plot <- NULL
 i <- 1
 j <- 6
 
-for(k in 1:(ceiling(length(sp.list)/6))) {
+for(k in 1:(ceiling(length(sp.list2)/6))) {
   
-  out.plot[[k]] <- ggplot(data = subset(plot.dat, sp.trnd %in% sp.list[i:j]), aes(x = as.numeric(year), y = index)) +
+  out.plot[[k]] <- ggplot(data = subset(plot.dat, sp.trnd %in% sp.list2[i:j]), aes(x = as.numeric(year), y = index)) +
     facet_wrap(~ sp.trnd, ncol = 2, scales = "free", as.table = TRUE) +
     geom_pointrange(aes(ymin = lower_ci, ymax = upper_ci)) +
     geom_smooth(aes(ymin = lower_ci, ymax = upper_ci), method = "loess") + 
@@ -69,7 +71,7 @@ for(k in 1:(ceiling(length(sp.list)/6))) {
   
   length(out.plot)
   # Plot to PDF file
-  pdf(paste(plot.dir, site, "_IndexPlot.pdf", sep=""),
+  pdf(paste(plot.dir, name, "_IndexPlot.pdf", sep=""),
       height = 10, width = 8, paper = "letter")
   try(print(out.plot[[1]], silent=T))
   try(print(out.plot[[2]], silent=T))

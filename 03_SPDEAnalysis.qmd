@@ -48,6 +48,7 @@ Here the user has several customization options.
 -   For a species-specific analysis, select the species you wish to analyse.
 
 To view your options of species:
+
 ```{r sp}
 
 species<-unique(sp.data$CommonName)
@@ -59,7 +60,7 @@ view(species)
 
 -   Set the distributional family.
 
-**Note: R is case sensitive so please type your variable names carefully and as specified below**
+*Note: R is case sensitive so type your variable names carefully and as specified below*
 
 ```{r}
 
@@ -90,6 +91,7 @@ fam<-'nbinomial'
 -   For a guild-specific analysis, select the guild you wish to analyse (i.e., migration, diet, or family), and the species will be used as a random effect in the model.
 
 To view your option of guilds:
+
 ```{r guild}
 
 migration<-unique(sp.data$Migration)
@@ -103,11 +105,11 @@ view(family)
 
 ```
 
-- Select the guild and distributional family.
+-   Select the guild and distributional family.
 
-**You do not need to run this code chunk if doing a species specific analysis**
+*You do not need to run this code chunk if doing a species-specific analysis. Default guild is set to "No".*
 
-```{r} 
+```{r}
 
 #If you wish to do a guild-specific analysis, change to "Yes" and specify the `type` as either "migration", "diet", or "family". This will override the species list above. 
 
@@ -116,9 +118,8 @@ type <-"family"
 
 #Set the distributional assumption. For the guild level analysis, we select 'poisson' but this may need to be adjusted. 
 
-#fam<-'nbinomial'
-fam<-'poisson'
-
+#fam<-'poisson'
+fam<-'nbinomial'
 ```
 
 ### 3.2 Run the Analysis and Plot Output
@@ -127,8 +128,10 @@ fam<-'poisson'
 
 #Create an output file to save your results
 #Give your analytically output file a unique name 
-#e.g., Area_Species, Area_guild
-name<-"Salish_Sea_AllSpecies"
+#e.g., BCCWS_Species, SalishSea_guild
+
+name<-"Salish_Sea_Migration"
+
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 source("OutputTables1.R")
 
@@ -136,7 +139,7 @@ source("OutputTables1.R")
 source("Analysis.R")
 
 #Plot the results to a pdf for inspection. 
-#You will find the outputs in your Output/Plot folder with the name site_IndexPlot.pdf
+#You will find the outputs in your Output/Plot folder
 source("PlotTrends.R")
 
 

@@ -2044,6 +2044,18 @@
       ],
       "Hash": "213b6b8ed5afbf934843e6c3b090d418"
     },
+    "terra": {
+      "Package": "terra",
+      "Version": "1.7-83",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "methods"
+      ],
+      "Hash": "fbeffe988419d292225a57cf9c284802"
+    },
     "testthat": {
       "Package": "testthat",
       "Version": "3.2.2",

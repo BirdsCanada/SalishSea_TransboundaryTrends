@@ -138,6 +138,8 @@ make_plot_site <- function(data, scale_label) {
 }
 
 
+#Guild default is "No" unless otherwise changed in the setup script
+guild<-"No"
 
 ##This is the Polygon of the Salish Sea
 ##Need to download and save the Bathymetry TIFF file from here:https://salish-sea-atlas-data-wwu.hub.arcgis.com/
@@ -169,3 +171,6 @@ make_plot_site <- function(data, scale_label) {
 # plot(st_geometry(poly_buffer), border = 'red', add = TRUE)
 # 
 # st_write(water_buffer, "Data/Spatial/Salish_Sea_Water_Polygon.shp")
+
+map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
+

@@ -9,7 +9,7 @@ names(indices.csv) <- c("results_code", "version", "area_code", "season", "perio
 
 
 write.table(indices.csv, file = paste(out.dir, 
-                                      name, "_AnnualIndices",".csv", sep = ""), 
+                                      name, "_AnnualIndices.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 
@@ -21,12 +21,12 @@ names(trends.csv) <- c("results_code",	"version",	"area_code",	"season",	"period
 
 #Endpoint Trends
 write.table(trends.csv, file = paste(out.dir, 
-                                     name, "_TrendsEndpoint", ".csv", sep = ""), 
+                                     name, "_TrendsEndpoint.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 #Slope Trends
 write.table(trends.csv, file = paste(out.dir, 
-                                     name, "_TrendsSlope", ".csv", sep = ""), 
+                                     name, "_TrendsSlope.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 ## Create .csv file for dispersion stat
@@ -45,6 +45,6 @@ model.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 4, byrow = FALSE,
                                        dimnames = NULL))
 names(model.csv) <- c("ModelType", "DIC", "WIC", "SpeciesCode")
 
-write.table(model.csv, file = paste(out.dir,  name, "ModelComparison.csv", sep = ""), 
+write.table(model.csv, file = paste(out.dir,  name, "_ModelComparison.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
