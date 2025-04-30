@@ -168,11 +168,8 @@ if(min.data==TRUE){
       #   northing = st_coordinates(.)[, 2]/1000) %>%
       # arrange(SurveyAreaIdentifier, wyear)
     
-   
-    #Set prior for the random effects
-    prec.prior<- list(prec = list(prior = "gaussian", param=c(0,0.1))) 
-    hyper.iid<-list(prec=list(prior="pc.prec", param=c(2,0.05)))
-    inla.setOption(scale.model.default=TRUE)
+
+      inla.setOption(scale.model.default=TRUE)
     
    if(guild=="Yes"){
      
@@ -318,12 +315,12 @@ N<-nrow(dat)
     #                        max.edge = c(150, 200), # km inside and outside
     #                        cutoff = 0,
     #                        crs = fm_crs(dat))
-    #SPDE
-    spde <- inla.spde2.pcmatern(  
-      mesh = mesh2,
-      prior.range = c(500, 0.5),
-      prior.sigma = c(1, 0.5)
-    )
+    # #SPDE
+    # spde <- inla.spde2.pcmatern(  
+    #   mesh = mesh2,
+    #   prior.range = c(500, 0.5),
+    #   prior.sigma = c(0.5, 0.1)
+    # )
 
     #Spatial Fields
     # make index sets for the spatial model
@@ -613,8 +610,8 @@ m = as.vector((exp(m)-1)*100)
   
   for (h in 1:nsamples) {
     # Extract spatial field samples
-    alpha_sample <- post.samples[[h]]$latent[grep("alpha", rownames(post.samples[[h]]$latent))]
-    tau_sample <- post.samples[[h]]$latent[grep("tau", rownames(post.samples[[h]]$latent))]
+    alpha_sample <- post.sample1[[h]]$latent[grep("alpha", rownames(post.sample1[[h]]$latent))]
+    tau_sample <- post.sample1[[h]]$latent[grep("tau", rownames(post.sample1[[h]]$latent))]
     
     # Project to unique locations
     alpha_loc <- as.vector(A_alpha_unique %*% alpha_sample)
@@ -696,8 +693,8 @@ m = as.vector((exp(m)-1)*100)
     rowwise() %>%
     mutate(
       index = median(c_across(starts_with("V"))),
-      lci = quantile(c_across(starts_with("V")), 0.025),
-      uci = quantile(c_across(starts_with("V")), 0.975),
+      lower_ci = quantile(c_across(starts_with("V")), 0.025),
+      upper_ci = quantile(c_across(starts_with("V")), 0.975),
       stdev = sd(c_across(starts_with("V")))
     ) %>%
     select(-starts_with("V"))  # Remove sample columns
@@ -794,10 +791,6 @@ m = as.vector((exp(m)-1)*100)
   #SLOPE TRENDS for each site
   #Summary of the GAM smooth on year
  
-  tmp1_site <- dat %>%
-    dplyr::select(SurveyAreaIdentifier, wyear) %>%
-    bind_cols(as.data.frame(posterior_samples_matrix))  # Your 100 sample columns
- 
   # Get unique sites and posterior sample columns
   sites <- unique(tmp1_site$SurveyAreaIdentifier)
   sample_cols <- grep("^V", names(tmp1_site), value = TRUE)
@@ -818,7 +811,7 @@ m = as.vector((exp(m)-1)*100)
     site_data <- tmp1_site[tmp1_site$SurveyAreaIdentifier == site, ]
     
     # Skip sites with <2 years of data
-    if (nrow(site_data) < 10) {
+    if (nrow(site_data) < 2) {
       message("Skipping site ", site, " - insufficient data")
       next
     }

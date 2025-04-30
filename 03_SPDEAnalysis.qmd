@@ -47,22 +47,21 @@ Here the user has several customization options.
 
 -   For a species-specific analysis, select the species you wish to analyse.
 
-To view your options of species:
-
-```{r sp}
-
-species<-unique(sp.data$CommonName)
-view(species)
-
-```
+<!-- -->
 
 -   Set the minimum data requirements.
 
--   Set the distributional family.
+-   Select the distributional family.
 
-*Note: R is case sensitive so type your variable names carefully and as specified below*
+-   Set random and spatail priors, or retain the defaults below, which balance flexibility with regularization, reducing over-fitting risk while maintaining spatial structure.
+
+-   *Note: R is case sensitive so type your variable names carefully and as specified below*
 
 ```{r}
+
+#To view your options of species
+species<-unique(sp.data$CommonName)
+view(species)
 
 #Define your `site` as either "SalishSea", "BCCWS" or "PSSS". 
 area <- "SalishSea"
@@ -85,6 +84,19 @@ nsites <- 10
 
 fam<-'nbinomial'
 #fam<-'poisson'
+
+#Priors for the random effects
+prec.prior <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
+hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.05)))
+
+# SPDE spatail priors
+spde <- inla.spde2.pcmatern(
+  mesh = mesh2,
+  prior.range = c(500, 0.5),
+  prior.sigma = c(0.5, 0.1)
+)
+
+
 
 ```
 
@@ -116,10 +128,6 @@ view(family)
 guild <- "Yes"
 type <-"family"
 
-#Set the distributional assumption. For the guild level analysis, we select 'poisson' but this may need to be adjusted. 
-
-#fam<-'poisson'
-fam<-'nbinomial'
 ```
 
 ### 3.2 Run the Analysis and Plot Output
@@ -130,7 +138,7 @@ fam<-'nbinomial'
 #Give your analytically output file a unique name 
 #e.g., BCCWS_Species, SalishSea_guild
 
-name<-"Salish_Sea_Migration"
+name<-"Salish_Sea_Family"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 source("OutputTables1.R")
@@ -142,12 +150,11 @@ source("Analysis.R")
 #You will find the outputs in your Output/Plot folder
 source("PlotTrends.R")
 
-
 ```
 
 Note that the Dispersion Statistic file in the Output folder should be reviewed after the analysis. If the statistic is \> 10 you should inspect the FitPlots in the Plot directory. In this case we will want to rerun using a different distributional assumption on the counts. This can be done by manually changing the `fam` to Poission and selecting these species to be rerun.
 
-\*\*AMWI and GRSC manually removed from the International outputs due to poor model fit.
+## Remove below
 
 ### 3.3 Combine and Plot Results
 

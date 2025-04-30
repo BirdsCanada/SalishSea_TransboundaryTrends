@@ -26,13 +26,13 @@ end.trnd<-all.trends %>% filter(index_type=="Endpoint trend")
 
 ed.trnd <- end.trnd %>%
   mutate(sp.trnd = paste("Endpoint: ", round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
-ed.trnd <- ed.trnd %>% dplyr::select(species_code, sp.trnd)
+ed.trnd <- ed.trnd %>% dplyr::select(species_code, sp.trnd, area_code)
 
-sl.trnd<-left_join(sl.trnd, ed.trnd, by="species_code")
+sl.trnd<-left_join(sl.trnd, ed.trnd, by= c("species_code","area_code"))
 
 #paste together the two sp.trnd columns
 sl.trnd$sp.trnd<-paste(sl.trnd$sp.trnd.x, sl.trnd$sp.trnd.y, sep="\n")
-sl.trnd<-sl.trnd %>% dplyr::select(species_code, sp.trnd)
+sl.trnd<-sl.trnd %>% dplyr::select(species_code, sp.trnd, area_code)
 
 #Prepare Indices for plotting
 indices <- indices[rowSums(is.na(indices)) < ncol(indices), ]
@@ -40,7 +40,8 @@ index <- indices %>%
   dplyr::select(index, upper_ci, lower_ci, LOESS_index, species_code, year, season, area_code) 
 
 plot.dat <- NULL
-plot.dat <- full_join(index, sl.trnd, by = c("species_code"), relationship = "many-to-many")
+plot.dat <- full_join(index, sl.trnd, by = c("species_code", "area_code"), relationship = "many-to-many")
+plot.dat <- plot.dat %>% filter(area_code %in% c("SalishSea", "PSSS", "BCCWS"))
 
 sp.list2 <- as.character(unique(plot.dat$sp.trnd))
 
