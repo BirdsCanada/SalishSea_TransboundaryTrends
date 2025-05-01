@@ -11,14 +11,6 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   #     ObservationCount5 (Unknown Habitat - might include flyovers? Protocol says not to count fly overs)
   
   in.BCCWS$ObservationCount<-as.numeric(in.BCCWS$ObservationCount3)  ##WILL WANT TO KEEP JUST THE NEARSHORE DATA TO MAKE THIS COMPARABLE TO PSSS
-  
-  # if(!(is.null(sp.code$authority))) {
-  #   sp.code<-sp.code %>% filter(authority=="BSCDATA") %>% dplyr::select(-authority, -species_id2, -rank) %>% distinct()
-  # } 
-  
-  sp<-left_join(sp.code, sp.tax, by="species_id")
-  sp<-sp %>% distinct(english_name, .keep_all = TRUE)
-  
   in.BCCWS<-merge(in.BCCWS, sp, by.x=c("CommonName"), by.y= ("english_name"), all.x=TRUE) 
   
   # filter data by months October to April
@@ -30,7 +22,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   in.BCCWS <- subset(in.BCCWS, form.id != 3794 & form.id != 5469 &
                        form.id != 5063 & form.id != 6945)
   
-   # if there are duplicate records in data file; this keeps only one. I checked and there currently are not any. 
+  # if there are duplicate records in data file; this keeps only one. I checked and there currently are not any. 
   in.BCCWS <- distinct(in.BCCWS)
   
   #create day of year column 
@@ -115,34 +107,30 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
         .default = CommonName), 
       CommonName = case_match(
         CommonName,
-        c("scaup sp.", "Lesser Scaup", "Greater Scaup", "Greater/Lesser Scaup") ~ "Greater/Lesser Scaup",
+        c("scaup sp.", "Lesser Scaup", "Greater Scaup", "Greater-Lesser Scaup") ~ "Greater/Lesser Scaup",
         .default = CommonName
       ), 
       CommonName = case_match(
         CommonName,
-        c("Eared Grebe", "Horned Grebe") ~ "Eared/Horned Grebe",
+        c("Eared Grebe", "Horned Grebe") ~ "Eared-Horned Grebe",
         .default = CommonName
       ), 
       CommonName = case_match(
         CommonName,
-        c("Canada Goose", "Cackling Goose") ~ "Canada/Cackling Goose",
+        c("Canada Goose", "Cackling Goose") ~ "Canada-Cackling Goose",
         .default = CommonName
       ), 
       CommonName = case_match(
         CommonName,
-        c("Clark's Grebe", "Western Grebe") ~ "Western/Clark's Grebe",
+        c("Clark's Grebe", "Western Grebe") ~ "Western-Clark's Grebe",
         .default = CommonName
       ))
   
-  #   #clean up the species list
-  # #Thayer's Gull missing SpeciesCode. Need to assign here species_id == 5190
-  # in.BCCWS$SpeciesCode<-as.character(in.BCCWS$SpeciesCode)
-  # in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5190] <- "ICGU"  ## CHANGE "Iceland Gull (Thayer's)" TO "Ivory Gull"
-  # 
-  # ##MEW GULL NEEDS CHANGE TO SHORT BILLED GULL IN THE DATA
-  # ##This has two species_id 5140 and 5142
-  # in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5140] <- "SBIG"
-  # in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5142] <- "SBIG"
+
+  ##MEW GULL NEEDS CHANGE TO SHORT BILLED GULL IN THE DATA
+  ##This has two species_id 5140 and 5142
+  in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5140] <- "SBIG"
+  in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5142] <- "SBIG"
   in.BCCWS$SpeciesCode<-as.factor(in.BCCWS$SpeciesCode)
   in.BCCWS <- subset(in.BCCWS, !is.na(CommonName))
   #Remove ObservationCounts that are NA

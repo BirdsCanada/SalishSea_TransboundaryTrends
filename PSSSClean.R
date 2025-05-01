@@ -103,22 +103,22 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
         .default = CommonName), 
     CommonName = case_match(
       CommonName,
-      c("scaup sp.", "Lesser Scaup", "Greater Scaup") ~ "Greater/Lesser Scaup",
+      c("scaup sp.", "Lesser Scaup", "Greater Scaup") ~ "Greater-Lesser Scaup",
         .default = CommonName
       ), 
     CommonName = case_match(
       CommonName,
-      c("Eared Grebe", "Horned Grebe") ~ "Eared/Horned Grebe",
+      c("Eared Grebe", "Horned Grebe") ~ "Eared-Horned Grebe",
         .default = CommonName
       ), 
     CommonName = case_match(
       CommonName,
-      c("Canada Goose", "Cackling Goose") ~ "Canada/Cackling Goose",
+      c("Canada Goose", "Cackling Goose") ~ "Canada-Cackling Goose",
         .default = CommonName
       ), 
     CommonName = case_match(
       CommonName,
-      c("Clark's Grebe", "Western Grebe") ~ "Western/Clark's Grebe",
+      c("Clark's Grebe", "Western Grebe") ~ "Western-Clark's Grebe",
         .default = CommonName
       ))
   

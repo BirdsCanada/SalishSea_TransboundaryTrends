@@ -34,9 +34,16 @@ librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredicto
 
 
 BMDE<-meta_bmde_fields("core")
-sp.code<-meta_species_codes()
+
+sp.c<-meta_species_codes()
+sp.c<-sp.c %>% filter(authority=="BSCDATA") %>% distinct() %>% select(species_id, species_code)
+
 sp.tax<-meta_species_taxonomy()
-sp.tax<-sp.tax %>% dplyr::select(species_id, scientific_name, english_name) %>% distinct()
+
+sp<-left_join(sp.c, sp.tax, by="species_id")
+sp<-sp %>% distinct(english_name, .keep_all = TRUE)
+
+sp<-sp %>% dplyr::select(species_code, scientific_name, english_name) %>% distinct()
 
 # Function to calculate duration in hours
 calculate_duration <- function(start, end) {
