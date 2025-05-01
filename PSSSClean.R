@@ -18,10 +18,10 @@ in.PSSS <- distinct(in.PSSS)
 
 #create day of year column 
 in.PSSS$doy <- as.numeric(format(as.Date(paste(in.PSSS$YearCollected, in.PSSS$MonthCollected, in.PSSS$DayCollected, sep="-")), "%j"))
-#create a new survey month column starting in September = 1 to April = 8
-in.PSSS$wmonth <-in.PSSS$wmonth <- ifelse(dat$survey_month >= 9, 
-                                      dat$survey_month - 8, 
-                                      dat$survey_month + 4)
+#create a new winter survey month column starting in October = 1 to April = 8
+in.PSSS$wmonth <-in.PSSS$wmonth <- ifelse(in.PSSS$MonthCollected >= 10, 
+                                      in.PSSS$MonthCollected - 9, 
+                                      in.PSSS$MonthCollected + 3)
 
 # keep only one survey per month by selecting the first survey if there are duplicates. There are currently none. 
 in.PSSS <- in.PSSS %>% group_by(SurveyAreaIdentifier, YearCollected, MonthCollected) %>% slice_min(doy) %>% ungroup()
@@ -65,20 +65,25 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
   in.PSSS <- in.PSSS %>% filter(DurationInHours >= 0)  
 #Filter Duration in hours greater than 0.3 and less than 3
   in.PSSS<-in.PSSS[in.PSSS$DurationInHours > 0.03 & in.PSSS$DurationInHours < 5,]  
-
+  
   # before we do more cleaning, make your events layer to ensure we have captured all the survey events. 
   # create an events matrix for future zero filling
-  event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
+  event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
   # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
-  event.PSSS <- event.PSSS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
+  event.PSSS <- event.PSSS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
   
   #Remove ObservationCounts that are NA
   in.PSSS <- in.PSSS %>% filter(!is.na(ObservationCount))
   #Remove missing SurveyAreaIdentifiers
   in.PSSS <- in.PSSS %>% filter(!is.na(SurveyAreaIdentifier))
-      
+  
+  #for PSSS we need to combine observation counts from the same survey that have different bearings and distances, otherwise there are duplicates
+  in.PSSS <- in.PSSS %>%
+    group_by(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, wyear, wmonth, YearCollected, MonthCollected, DayCollected) %>%
+    summarise(ObservationCount = sum(ObservationCount), .groups = 'drop')
+  
   # retain columns that are needed for the analysis
-  in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
+  in.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, ObservationCount,  wyear, wmonth, YearCollected, MonthCollected, DayCollected)
 
   # clean up some of the species names and codes
   in.PSSS<-in.PSSS %>% filter(!is.na(CommonName)) %>% filter(!CommonName %in% c("alcid sp.", "grebe sp.", "gull (small)", "diving duck sp.", "gull sp.", "scoter sp.", "cormorant sp.", "goldeneye sp.", "dabbling duck sp.", "merganser sp.", "loon sp."))

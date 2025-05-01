@@ -1,8 +1,7 @@
 #Code used to clean the BCCWS and prepare it for analysis 
 
 #Created by Danielle Ethier
-#Last Edited April 2025
-
+#Last Edited May 2025
 
 in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database 
   
@@ -17,7 +16,6 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   #   sp.code<-sp.code %>% filter(authority=="BSCDATA") %>% dplyr::select(-authority, -species_id2, -rank) %>% distinct()
   # } 
   
-  sp.tax<-sp.tax %>% dplyr::select(species_id, scientific_name, english_name) %>% distinct()
   sp<-left_join(sp.code, sp.tax, by="species_id")
   sp<-sp %>% distinct(english_name, .keep_all = TRUE)
   
@@ -37,10 +35,10 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   
   #create day of year column 
   in.BCCWS$doy <- as.numeric(format(as.Date(paste(in.BCCWS$YearCollected, in.BCCWS$MonthCollected, in.BCCWS$DayCollected, sep="-")), "%j"))
-  
-  in.BCCWS$wmonth <-in.BCCWS$wmonth <- ifelse(dat$survey_month >= 9, 
-                                            dat$survey_month - 8, 
-                                            dat$survey_month + 4)
+  #create a new survey month column starting in October = 1 to April = 8
+  in.BCCWS$wmonth <-in.BCCWS$wmonth <- ifelse(in.BCCWS$MonthCollected >= 10, 
+                                            in.BCCWS$MonthCollected - 9, 
+                                            in.BCCWS$MonthCollected + 3)
   
   # keep only one survey per month by selecting the first survey if there are duplicates
   in.BCCWS <- in.BCCWS %>% group_by(SurveyAreaIdentifier, YearCollected, MonthCollected) %>% slice_min(doy) %>% ungroup()
@@ -89,9 +87,9 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   in.BCCWS<-in.BCCWS[in.BCCWS$DurationInHours > 0.3 & in.BCCWS$DurationInHours < 10,]
 
   # create an events matrix for future zero filling
-  event.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
+  event.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
   # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum. Technically, each form should have a single value for durination in hours. 
-  event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
+  event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
   # ensure that each SurveyAreaIdentifier has a single decimal latitude and longitude. If multiple, take the first
   event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier) %>% slice_min(DecimalLatitude) %>% ungroup()
   
@@ -99,7 +97,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # in.BCCWS <- in.BCCWS %>% filter(!is.na(ObservationCount))
   
   # retain columns that are needed for the analysis
-  in.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, ObservationCount,  wyear, YearCollected, MonthCollected, DayCollected)
+  in.BCCWS <- in.BCCWS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, SpeciesCode, CommonName, ObservationCount,  wyear, YearCollected, wmonth, MonthCollected, DayCollected)
 
   #remove species that are detected less than 10 times over all years
   sample<-in.BCCWS %>% group_by(CommonName) %>% summarise(n_tot = sum(ObservationCount, na.rm=TRUE)) %>% filter(n_tot>10)

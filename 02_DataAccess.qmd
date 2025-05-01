@@ -6,7 +6,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# Data Access and Cleaning
+# 2. Data Access and Cleaning
 
 Before you get started, run the `setup.R` script to install and load the necessary packages and functions for this analysis.
 
@@ -16,9 +16,9 @@ source("00_Setup.R")
 
 ```
 
-## 1. British Columbia Coastal Waterbird Survey (BCCWS)
+## 2.1 British Columbia Coastal Waterbird Survey (BCCWS)
 
-### 1.1 Protocol
+### 2.1.1 Protocol
 
 BCCWS data collection protocol can be found online [here](https://www.birdscanada.org/bird-science/british-columbia-coastal-waterbird-survey/bccws_resources).
 
@@ -26,7 +26,7 @@ In short, surveys have been conducted by volunteers using a standardized protoco
 
 The data are collected using a standardized protocol, by trained citizen-science volunteers. This standardization is a strength of this data set for making inferences about coastal waterbirds in the Canadian Salish Sea.
 
-### 1.2 Data Collected
+### 2.1.2 Data Collected
 
 Observation counts of waterbirds and raptor seen during a survey are compiled at the scale of the route (i.e., the maximum count per species) on each monthly survey. These observations are divided into inland, near shore (shoreline to 500m out from high tide), off shore (beyond 500m), and total counts. The dataset is not zero-filled.
 
@@ -38,7 +38,7 @@ Auxiliary Data Collected:
 
 -   Survey condition: precipitation, % cloud, sea condition, tide state, tide movement, visibility, survey equipment, human activity (all categorical)
 
-### 1.2 Data Access
+### 2.1.3 Data Access
 
 Data can be freely accessed through the NatureCounts data [download](https://naturecounts.ca/nc/default/searchquery.jsp) portal or directly through the naturecounts R package. The BCCWS is Access Level 4 dataset, meaning a data request form must be submitted. This is not meant to be a barrier, rather a means of keeping track of who is using the data and for what purposes.
 
@@ -56,9 +56,9 @@ BCCWS<-read.csv("Data/BCCWS.csv")
  
 ```
 
-## 2. Puget Sound Seabird Survey (PSSS)
+## 2.2 Puget Sound Seabird Survey (PSSS)
 
-### 2.1 Protocol
+### 2.2.1 Protocol
 
 PSSS data collection protocol can be found online [here](https://seattleaudubon.org/wp-content/uploads/2021/01/PSSS_Protocol_2014-15.pdf).
 
@@ -66,7 +66,7 @@ In short, surveys are conducted by volunteers using a standardized protocol and 
 
 The data are collected using a standardized protocol, by trained citizen-science volunteers. This standardization is a strength of this dataset for making inferences about coastal waterbirds in the US Salish Sea.
 
-### 2.2 Data Collected
+### 2.2.2 Data Collected
 
 Total observation counts of each waterbird species seen during a point survey are recorded, including bearing, distance, and sex ratio. Raptors are recorded separately from the other waterbird species. The dataset is not zero-filled.
 
@@ -78,7 +78,7 @@ Auxiliary Data Collected:
 
 -   Survey condition: weather, precipitation, sea state, tide movement, visibility, human activity, raptor activity (all categorical)
 
-### 2.3 Data Access
+### 2.2.3 Data Access
 
 At the time of writing, the data were only accessible by reaching out to the Puget Sound Bird Observatory directly and filling out a data share agreement. The data will be sent to you as a .xslx flat file which will be suitable for Data formatting and processing. Ensure that you receive all the data for the specified temporal period you are interested in analyzing. This will be needed to allow for proper zero-filling. Place the data in a `Data` folder in your working directory.
 
@@ -96,7 +96,7 @@ PSSS <- read.csv("Data/PSSS Survey Data - 13 Mar 2025.csv") #copy contains wyear
 
 ```
 
-### 2.4 Data Format
+### 2.2.4 Data Format
 
 The PSSS is in a different format than the BCCCW, and therefore requires a separate data processing step to wrangle the data into the 169 core fields of the Bird Monitoring Data Exchange ([BMDE](https://naturecounts.ca/nc/default/nc_bmde.jsp)). The following function will do this step for you.
 
@@ -112,7 +112,7 @@ PSSS<-read.csv("Data/PSSS.csv")
  
 ```
 
-## 3. Clean and Combine
+## 2.3 Clean and Combine
 
 Now it is time to do some data cleaning before we combine the BCCWS and PSSS datasets. The user has the opportunity here to select the start and end dates of the analysis by changing the Y1 and Y2 variables.
 
@@ -132,8 +132,10 @@ Other non-target species are also removed i.e., any species detected less than 1
 
 This part of the code also creates and events martix for each program. This is what is used for zero-filling during the species ir guild specific analysis.
 
-- wmonth = survey month (`1=September to 8=Arpil) 
-- wyear
+-   wmonth = MonthCollected (1=September to 8=April)
+-   wyear
+-   ObservationCout3 for BCCWS to match
+-   sampling events matrix
 
 ```{r}
 
@@ -160,7 +162,7 @@ write.csv(events, "Data/events.csv", row.names = FALSE)
 
 ```
 
-## 4. Species Selection
+## 2.4. Species Selection
 
 Not all species will be included in an analysis. Some species are detected too infrequently to be included or they may not be species of focus for your study area. For example, you may wish to manually create a species list or you can set minimum data requirements for species to be included in the analysis.
 
@@ -197,7 +199,7 @@ write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
 
 ```
 
-## 5. Guild Assignment
+## 2.5 Guild Assignment
 
 The user may be interested in assigning species to Guilds for their analysis. In the Data folder we provide the user with migration and dietary guilds for the 53 species that the survey programs have in common. We can also assign species to family using the NatureCounts metadata.
 
@@ -216,9 +218,11 @@ write.csv(sp.data, "Data/sp.data.csv", row.names = FALSE)
 
 ```
 
-## 6. Sampling Events Plot
+## 2.6 Sampling Events Plot
 
 Now we will plot the distribution of sampling events over the extent of the Salish Sea. This will be facets by year (wyear) so that changes in sampling effort can be spatially visualized. Each survey program will be given a different colour.
+
+Notice that in 2020, sampling was reduced in Canada and did not happen in the US due to COVID-19. We will therefore remove this wyear during our analysis.
 
 ```{r}
 
@@ -247,6 +251,8 @@ ggplot(data = events_sf) +
   scale_color_discrete(name = "Winter Year")
 
 ```
+
+###DELETE BELOW
 
 ## 7. Effort Plot (Duration in Hours)
 

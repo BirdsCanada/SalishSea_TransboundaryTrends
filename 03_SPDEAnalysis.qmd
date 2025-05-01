@@ -8,7 +8,7 @@ editor_options:
 
 # Data Analysis - SPDE
 
-## 3 International and National Assessments
+## 3 International and National Trends 
 
 A first assessment of coastal waterbird trends will be done for the full extent of the Salish Sea, and for each country separately. This is done on a species-by-species basis and is done without using a spatially explicit model to start.
 
@@ -55,7 +55,7 @@ Here the user has several customization options.
 
 -   Set random and spatail priors, or retain the defaults below, which balance flexibility with regularization, reducing over-fitting risk while maintaining spatial structure.
 
--   *Note: R is case sensitive so type your variable names carefully and as specified below*
+    *Note: R is case sensitive so type your variable names carefully and as specified below*
 
 ```{r}
 
@@ -161,7 +161,7 @@ If you have run the analysis for all three regions (SalishSea, BCCWS, PSSS) you 
 
 #You can only plot one trend type in the plots. 
 #Select either End Point trend or Slope trend. 
-type<-"End Point trend"
+plot.type<-"End Point trend"
 
 #Plot the results to a pdf for inspection. You will find the outputs in your Output/Plot folder with the name Full_TrendTable.csv
 source("PlotInter&National.R")

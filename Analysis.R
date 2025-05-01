@@ -63,7 +63,7 @@ if(guild=="Yes"){
     
     if(guild =="Yes"){
     dat <- sp.dat %>% filter(Guild==sp.list[i])
-    dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, .keep_all = TRUE)
+    dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, .keep_all = TRUE)
     sp.code<-sp.list[i]
     dat$SpeciesCode<-sp.list[i]
     species_name<- type
@@ -74,7 +74,7 @@ if(guild=="Yes"){
     
     #Subset the data for the species
     dat <- sp.dat %>% filter(CommonName==sp.list[i])
-    dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, MonthCollected, DayCollected, .keep_all = TRUE)
+    dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, .keep_all = TRUE)
     sp.code<-sp.list[i]
     dat$SpeciesCode<-sp.list[i]
     
@@ -101,7 +101,7 @@ if(guild=="Yes"){
     }
     
 ##zero-fill the dat using the events dataframe##
-    dat<-left_join(event, dat, by= c("ProjectCode", "SurveyAreaIdentifier", "wyear", "YearCollected", "MonthCollected", "DayCollected"))
+    dat<-left_join(event, dat, by= c("ProjectCode", "SurveyAreaIdentifier", "wyear", "wmonth", "YearCollected", "MonthCollected", "DayCollected"))
 #Observation Counts will be backfilled with a 0 whenever it is NA
     dat$ObservationCount[is.na(dat$ObservationCount)]<-0
   
@@ -127,8 +127,8 @@ if(guild=="Yes"){
     #That the species was detected in at least 1/2 of the survey years
     #And that greater than a certain % of sites have non-zero counts
     
-    SpeciesMean<- dat %>% group_by(YearCollected) %>% summarize(YearMean = sum(ObservationCount)) %>% ungroup() %>% summarize(MeanMean = mean(YearMean))
-    SpeciesMean$NumYears <- n_distinct(dat$YearCollected)
+    SpeciesMean<- dat %>% group_by(wyear) %>% summarize(YearMean = sum(ObservationCount)) %>% ungroup() %>% summarize(MeanMean = mean(YearMean))
+    SpeciesMean$NumYears <- n_distinct(dat$wyear)
     
     #Now cheek the SpeciesMean object to see if the species meets the minimum data requirements 
     #all the variable must be large than the values min.abundance, min.years, zero.count, if TRUE continue with the analysis
@@ -403,7 +403,7 @@ tmp1<-tmp1 %>% rowwise() %>% mutate(index = median(c_across(V2:V101)), lower_ci=
 #Assign data to output table 
 indices.csv<-tmp1 %>% dplyr::select(wyear, index, lower_ci, upper_ci, stdev) %>% mutate(
 species_code = sp.code,
-years = paste(min(dat$YearCollected), "-", max(dat$YearCollected), sep = ""),
+years = paste(min(dat$wyear), "-", max(dat$wyear), sep = ""),
 year = wyear,
 period ="all years",
 season = "winter",
@@ -635,7 +635,7 @@ m = as.vector((exp(m)-1)*100)
   #Assign data to output table 
   indices.csv<-annual_grid %>% dplyr::select(area_code, wyear, index, lower_ci, upper_ci, stdev) %>% mutate(
     species_code = sp.code,
-    years = paste(min(dat$YearCollected), "-", max(dat$YearCollected), sep = ""),
+    years = paste(min(dat$wyear), "-", max(dat$wyear), sep = ""),
     year = wyear,
     period ="all years",
     season = "winter",

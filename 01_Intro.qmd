@@ -4,7 +4,7 @@ format: html
 editor: visual
 ---
 
-# **Modeling sea duck trends in the transboundary waters of the Salish Sea: a multi-scale approach to meet management planning needs.**
+# 1. Modeling sea duck trends in the transboundary waters of the Salish Sea: a multi-scale approach to meet management planning needs.
 
 ## 1.1 Overview
 
@@ -24,7 +24,7 @@ Our research assess transboundary, spatially explicit abundance trends of coasta
 
 Details on data collection and processing can be found in the next section of this user guide.
 
-The basic statistical unit for the analysis will be the montly count of each species on a survey route across months within the species-specific survey window (see Ethier et al. 2020). **Our models will describe the maximum counts of each species within this window for either a grid (discrete space) or site (continuous space) encompassing unique combinations of routes k during a year t. The log-linear predictor of the expected count per geographic unit will take the form:**
+The basic statistical unit for the analysis will be the monthly count of each species on a survey route across months within the species-specific survey window (see Ethier et al. 2020). **Our models will describe the maximum counts of each species within this window for either a grid (discrete space) or site (continuous space) encompassing unique combinations of routes k during a year t. The log-linear predictor of the expected count per geographic unit will take the form:**
 
 log(µ~it~) = α~i~+τ~i~Year~itk~+κ~k~+y~it~
 
@@ -39,6 +39,8 @@ Parameters include a grid- or site-specific random intercept α~i~ and a grid- o
 All model outputs will be displayed on the NatureCounts web portal and will be accessible through the *naturecounts* R package. The outputs from this analysis will therefore provide resource managers with openly accessible annual indices of abundance for model-based management planning.
 
 \*\* Winter 2020 needs removed do to inappropriate sampling. \*\*
+Extreme outliers removed. 
+Minimum data requirements are set. 
 
 ## 1.4 Using this Technical Guide
 
