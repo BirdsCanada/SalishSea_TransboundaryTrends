@@ -4,21 +4,21 @@ format: html
 editor: visual
 ---
 
-# 1. Modeling sea duck trends in the transboundary waters of the Salish Sea: a multi-scale approach to meet management planning needs.
+# 1. Modeling sea duck trends in the transboundary waters of the Salish Sea: a multi-scale approach to meet management planning needs. {#1.0Intro}
 
-## 1.1 Overview
+## 1.1 Overview {#1.1Intro}
 
 Waterbird species that overwinter in the Salish Sea have experienced significant changes in abundance in recent decades, the causes of which remain largely unresolved. Globally significant populations of sea ducks, including several vital sign indicators (Puget Sound Partnership, 2023), are among the species experiencing declines. Long-term standardized monitoring programs have demonstrated their value for assessing broad-scale population trends of many coastal waterbirds in parts of the Salish Sea (Anderson et al. 2009, Bower 2009, Crewe et al. 2012, Ethier et al. 2020, de Zwaan et al. 2024), however, a seamless approach for generating and updating transboundary trends for species and guilds has yet to be realized, nor has an approach for assessing finer-scale trends at geographic extents relevant to conservation planners been developed.
 
 Our research closes this technical and information gap by applying spatially explicit hierarchical analytical techniques in a Bayesian framework to two parallel citizen science programs in Canada (British Columbia Coastal Wwaterbird Survey; BCCWS) and the U.S. (Puget Sound Seabird Survey; PSSS). Collectively, these programs have monitored overwintering waterbirds across 476 sampling locations in the Salish Sea since 2008 using a nearly identical protocol. The statistical approach we deploy takes advantage of the spatial relationships among count sites, allowing for more robust parameter estimates in places where data are sparse, and enabling trend outputs at finer spatial scales relevant to local management organizations. Further, by making these results and analytical code openly accessible, we empower resource managers with regionally tailored, regularly updated trends and annual indices of abundance, which will ultimately expedite our understanding of drivers of change and provide baselines from which to assess the outcomes of our management actions.
 
-## 1.2 Goals
+## 1.2 Goals {#1.2Intro}
 
 The goals of our research were to leveage standardized citizen-science monitoring data to (1) obtain scientifically credible measures of abundance trends of waterbirds in the transboundary waters of the Salish Seas at scales appropriate for resource management, (2) identify priority species for conservation, and (3) provide resource managers with openly accessible annual indices of abundance for model-based management planning. In turn, these modelling outputs can be used to assess environmental and human-induced mechanisms of waterbird changes and provide a foundation from which to tease apart whether local population fluctuations are a result of true changing abundance or shifts in species distributions over time (e.g., de Zwaan et al., 2024).
 
 Based on previous research, we hypothesized that overwinter abundance trends in waterbirds will be influenced by guild-level characteristics (e.g., diet, migration distance, family), and that these will vary spatially (Ethier et al., 2020; de Zwaan et al., 2024). Specifically, we predict that abundance declines will be more prevalent in higher tropic-level consumers because this guild is generally more responsive to shifts in the availability and quality of prey (e.g., Ainley & Hyrenbach, 2010; Ballance et al., 1997; Hyrenbach & Veit, 2003; Vilchis et al., 2014). Second, we predict that abundance declines will be more pronounced in migrants because these populations are able to shift their range in response to resource availability more readily than local breeders (e.g., Burger & Gochfeld, 1991; Marks & Redmond, 1994; Willie et al., 2020). Spatially, we anticipate that finer-scaled abundance trends will reveal patterns that are more homogenized (e.g., not significant) at national or international extents, even when finer-scale trends show significant spatial variation (e.g., Ethier & Nudds, 2015). We anticipate that some species will display north-south or east-west patterns in trends that are consistent with redistributions in response to climate change, and other species to display a patchwork of trends that are consistent with more localize drivers of change (Ethier et al., 2022).
 
-## 1.3 Methods
+## 1.3 Methods {#1.3Intro}
 
 Our research assess transboundary, spatially explicit abundance trends of coastal waterbirds at scales that are appropriate for conservation practitioners. Our analysis use spatially varying coefficient models (SVCs, Gelfand et al. 2003) to account for relationships between variables that are not uniform across large spatial areas. This modelling approach was first applied to continent wide bird abundance data to assess winter bird population trends using discrete aerial units (Meehan et al. 2019) and an intrinsic conditional autoregressive model (iCAR; Besag 1974). The modelling framework was later adapted (Meehan et al. 2024) to incorporate continuous space using a triangulated model mesh and stochastic partial differential equation (SPDE; Lindgren et al. 2022). The benefits of a continuous-space (SPDE) versus a discrete-space (iCAR) models are (1) finer resolution of trends, (2) a better understanding of the range of spatial correlation, and (3) a reduction in boundary effects associated with discrete-space analyses. However, many management units (such as geopolitical boundaries) are divided by discrete polygons, making the iCAR approach appropriate in many instances. We therefore develop workflows which allows for either an iCAR or SPDE SCV approach to assess and compare estimates of annual relative abundance as well as long-term trends of coastal waterbirds in the Salish Sea.
 
@@ -38,14 +38,12 @@ Parameters include a grid- or site-specific random intercept α~i~ and a grid- o
 
 All model outputs will be displayed on the NatureCounts web portal and will be accessible through the *naturecounts* R package. The outputs from this analysis will therefore provide resource managers with openly accessible annual indices of abundance for model-based management planning.
 
-\*\* Winter 2020 needs removed do to inappropriate sampling. \*\*
-Extreme outliers removed. 
-Minimum data requirements are set. 
+\*\* Winter 2020 needs removed do to inappropriate sampling. \*\* Extreme outliers removed. Minimum data requirements are set.
 
-## 1.4 Using this Technical Guide
+## 1.4 Using this Technical Guide {#1.4Intro}
 
 In this technical guide we detailing the analytical methods used to calculate broad- and fine-scale trends and annual indices of abundance for all species regularly monitored by the BCCWS and PSSS. Specifically, this guide will provide step-by-step instructions on (1) data access, (2) data wrangling and processing, (3) setting up the analysis for various spatial scales (continuous and discrete space), and (4) running the analysis and generating output tables and maps. This guide assumes that you have a basic understanding of R. We recommend that you become familiar with ['R for Data Science'](http://r4ds.had.co.nz/) by Garrett Grolemund and Hadley Wickham, which covers how to import, visualize, and summarize data in R using the [tidyverse](https://www.tidyverse.org/) collection of R packages.
 
-## 1.5 Acknowledgement
+## 1.5 Acknowledgement {#1.5Intro}
 
 This project was financially supported by the SeaDoc Society, a program of the Karen C. Drayer Wildlife Health Center, School of Veterinary Medicine, University of California, Davis.

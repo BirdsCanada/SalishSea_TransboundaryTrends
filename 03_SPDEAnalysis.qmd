@@ -8,7 +8,7 @@ editor_options:
 
 # Data Analysis - SPDE
 
-## 3 International and National Trends 
+## 3 International and National Trends
 
 A first assessment of coastal waterbird trends will be done for the full extent of the Salish Sea, and for each country separately. This is done on a species-by-species basis and is done without using a spatially explicit model to start.
 
@@ -39,15 +39,13 @@ events<-read.csv("Data/events.csv")
 
 ```
 
-### 3.1 Set Analysis Conditions
+### 3.1 Set Analysis Parameters
 
 Here the user has several customization options.
 
 -   Select the study area.
 
 -   For a species-specific analysis, select the species you wish to analyse.
-
-<!-- -->
 
 -   Set the minimum data requirements.
 
@@ -90,13 +88,8 @@ prec.prior <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
 hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.05)))
 
 # SPDE spatail priors
-spde <- inla.spde2.pcmatern(
-  mesh = mesh2,
-  prior.range = c(500, 0.5),
-  prior.sigma = c(0.5, 0.1)
-)
-
-
+prior.range = c(500, 0.5)
+prior.sigma = c(0.5, 0.1)
 
 ```
 

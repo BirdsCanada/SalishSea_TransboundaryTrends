@@ -104,6 +104,8 @@ if(guild=="Yes"){
     dat<-left_join(event, dat, by= c("ProjectCode", "SurveyAreaIdentifier", "wyear", "wmonth", "YearCollected", "MonthCollected", "DayCollected"))
 #Observation Counts will be backfilled with a 0 whenever it is NA
     dat$ObservationCount[is.na(dat$ObservationCount)]<-0
+    dat$CommonName[is.na(dat$CommonName)]<-sp.code
+    dat$SpeciesCode[is.na(dat$SpeciesCode)]<-sp.code
   
 #remove extreme outliers 
     outlier<-(quantile(dat$ObservationCount, probs = c(0.99)))*3
@@ -168,9 +170,6 @@ if(min.data==TRUE){
       #   northing = st_coordinates(.)[, 2]/1000) %>%
       # arrange(SurveyAreaIdentifier, wyear)
     
-
-      inla.setOption(scale.model.default=TRUE)
-    
    if(guild=="Yes"){
      
      dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
@@ -178,16 +177,17 @@ if(min.data==TRUE){
      formula<- ObservationCount ~ -1 + #year_idx + 
        f(kappa, model="iid", hyper=hyper.iid) +  #in the spatial model we remove site as the variation will be captured in the spatial component. 
        f(sp_idx, model="iid", hyper=hyper.iid)+
-       f(wmonth_idx, model = "ar1", hyper=prec.prior)
+       f(wmonth_idx, model = "ar1", hyper=prec.prior)  
      
    }else{
     
      formula<- ObservationCount ~ -1 + #year_idx +
       f(kappa, model="iid", hyper=hyper.iid) + 
-      f(wmonth_idx, model = "ar1", hyper=prec.prior)
+      f(wmonth_idx, model = "ar1", hyper=prec.prior) 
 
    }
-      M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
+     
+     M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
                  control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE), verbose =TRUE), silent = T)
     
 
@@ -275,7 +275,7 @@ N<-nrow(dat)
     }
 
     #Create the Mesh
-    #Make a set of distinct study sites for mapping
+    #Make a set of distinct study sites for mapping kappa
     site_map <- dat %>%
       dplyr::select(SurveyAreaIdentifier, easting, northing) %>% distinct()
     
@@ -306,6 +306,13 @@ N<-nrow(dat)
       cutoff = 5,                  # Minimum distance between vertices
       crs = fm_crs(dat)             # Use the same CRS as your data
     )
+    
+    spde <- inla.spde2.pcmatern(
+      mesh = mesh2,
+      prior.range = prior.range,
+      prior.sigma = prior.sigma
+    )
+    
     
     # Bound<-inla.nonconvex.hull(Loc_unique)
     # 
@@ -348,14 +355,19 @@ N<-nrow(dat)
       formula.sp<- count ~ -1 + Intercept + 
       f(year_idx, model="iid", hyper=hyper.iid) + #so that alpha can be calculated per year
       # f(kappa, model="iid", hyper=hyper.iid) + #removed from spatial model
-      f(sp_idx, model="iid", hyper=hyper.iid) + f(wmonth_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
+      f(sp_idx, model="iid", hyper=hyper.iid) + 
+      f(wmonth_idx, model = "ar1", hyper=prec.prior) +
+      f(alpha, model =spde) + 
+      f(tau, model =spde)
     
       }else{
     
      formula.sp<- count ~ -1 + Intercept + 
       f(year_idx, model="iid", hyper=hyper.iid) +
       # f(kappa, model="iid", hyper=hyper.iid) + 
-      f(wmonth_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
+      f(wmonth_idx, model = "ar1", hyper=prec.prior) +
+      f(alpha, model =spde) + 
+      f(tau, model =spde)
     }   
 
 
@@ -1055,8 +1067,8 @@ m = as.vector((exp(m)-1)*100)
     multiplot(pa, pt, pa_range95, pt_range95, cols=2)
     while(!is.null(dev.list())) dev.off()
    
-     } # end if Salish Sea create map
-     } #end min.data  
+    } # end if Salish Sea create map
+   } #end min.data  
   }#end SpeciesLoop
 
 

@@ -2,6 +2,7 @@
 #renv::snapshot()
 
 options(timeout = 1200)
+inla.setOption(scale.model.default=TRUE)
 
 #Create data folder and output folders in working directory
 if(!dir.exists("Data")) dir.create("Data")
