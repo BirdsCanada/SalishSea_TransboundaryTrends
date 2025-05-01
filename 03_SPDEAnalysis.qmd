@@ -102,10 +102,15 @@ spde <- inla.spde2.pcmatern(
 
 -   For a guild-specific analysis, select the guild you wish to analyse (i.e., migration, diet, or family), and the species will be used as a random effect in the model.
 
-To view your option of guilds:
+<!-- -->
 
-```{r guild}
+-   Select the guild and distributional family.
 
+*You do not need to run this code chunk if doing a species-specific analysis. Default guild is set to "No".*
+
+```{r}
+
+#To view your options of guilds:
 migration<-unique(sp.data$Migration)
 view(migration)
 
@@ -115,17 +120,9 @@ view(diet)
 family<-unique(sp.data$family_name)
 view(family)
 
-```
-
--   Select the guild and distributional family.
-
-*You do not need to run this code chunk if doing a species-specific analysis. Default guild is set to "No".*
-
-```{r}
-
 #If you wish to do a guild-specific analysis, change to "Yes" and specify the `type` as either "migration", "diet", or "family". This will override the species list above. 
 
-guild <- "Yes"
+guild <- "No"
 type <-"family"
 
 ```
@@ -138,7 +135,7 @@ type <-"family"
 #Give your analytically output file a unique name 
 #e.g., BCCWS_Species, SalishSea_guild
 
-name<-"Salish_Sea_Family"
+name<-"Salish_Sea_Species"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 source("OutputTables1.R")

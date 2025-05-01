@@ -115,11 +115,11 @@ if(guild=="Yes"){
     dat<-dat %>% group_by(SurveyAreaIdentifier) %>% filter(sum(ObservationCount)>0) %>% ungroup()
     routes<-n_distinct(dat$SurveyAreaIdentifier)
     
-    # create date and day of year columns
-    dat$date <- as.Date(paste(dat$YearCollected, dat$MonthCollected, 
-                              dat$DayCollected, sep = "-"))
-    dat$doy <- as.numeric(format(dat$date, "%j"))
-    
+    # # create date and day of year columns
+    # dat$date <- as.Date(paste(dat$YearCollected, dat$MonthCollected, 
+    #                           dat$DayCollected, sep = "-"))
+    # dat$doy <- as.numeric(format(dat$date, "%j"))
+    # 
 #Minimum Data Requirements##
     
     #Now we will check that the minimum data requirements are met. 
@@ -153,7 +153,7 @@ if(min.data==TRUE){
       std_yr = wyear - Y2,
       kappa = as.integer(factor(dat$SurveyAreaIdentifier)),
       year_idx = as.integer(wyear - mean_wyear), #intercept is the expected count during the most recent year of data collection. 
-      doy_idx = as.integer(doy), 
+      wmonth_idx = as.integer(wmonth), 
       sp_idx = as.integer(factor(CommonName)))%>%
       st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE) %>% 
       st_transform(epsg6703km) %>%
@@ -178,13 +178,13 @@ if(min.data==TRUE){
      formula<- ObservationCount ~ -1 + #year_idx + 
        f(kappa, model="iid", hyper=hyper.iid) +  #in the spatial model we remove site as the variation will be captured in the spatial component. 
        f(sp_idx, model="iid", hyper=hyper.iid)+
-       f(doy_idx, model = "ar1", hyper=prec.prior)
+       f(wmonth_idx, model = "ar1", hyper=prec.prior)
      
    }else{
     
      formula<- ObservationCount ~ -1 + #year_idx +
       f(kappa, model="iid", hyper=hyper.iid) + 
-      f(doy_idx, model = "ar1", hyper=prec.prior)
+      f(wmonth_idx, model = "ar1", hyper=prec.prior)
 
    }
       M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
@@ -261,7 +261,7 @@ N<-nrow(dat)
        # kappa = dat$kappa, #removed from spatial model
         year_idx = dat$year_idx, 
         sp_idx = dat$sp_idx,
-        doy_idx = dat$doy_idx
+        wmonth_idx = dat$wmonth_idx
       )
       
     }else{
@@ -270,7 +270,7 @@ N<-nrow(dat)
       Intercept=rep(1, N),
       year_idx = dat$year_idx, 
     #  kappa = dat$kappa, #removed from spatial model
-      doy_idx = dat$doy_idx
+      wmonth_idx = dat$wmonth_idx
     )
     }
 
@@ -348,14 +348,14 @@ N<-nrow(dat)
       formula.sp<- count ~ -1 + Intercept + 
       f(year_idx, model="iid", hyper=hyper.iid) + #so that alpha can be calculated per year
       # f(kappa, model="iid", hyper=hyper.iid) + #removed from spatial model
-      f(sp_idx, model="iid", hyper=hyper.iid) + f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
+      f(sp_idx, model="iid", hyper=hyper.iid) + f(wmonth_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
     
       }else{
     
      formula.sp<- count ~ -1 + Intercept + 
       f(year_idx, model="iid", hyper=hyper.iid) +
       # f(kappa, model="iid", hyper=hyper.iid) + 
-      f(doy_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
+      f(wmonth_idx, model = "ar1", hyper=prec.prior) + f(alpha, model =spde)+ f(tau, model =spde)
     }   
 
 
@@ -387,7 +387,7 @@ post.sample1<-inla.posterior.sample(nsamples, M1)
 tmp1<-NULL
 tmp1 <- dat %>% dplyr::select(wyear) %>% st_drop_geometry() 
 
-#for each sample in the posterior we want to join the predicted to tmp so that the predictions line up with doy/year and we can get the mean count by year
+#for each sample in the posterior we want to join the predicted to tmp so that the predictions line up with wmonth/year and we can get the mean count by year
 for (h in 1:nsamples){
   pred<-exp(post.sample1[[h]]$latent[1:nrow(dat)])
   tmp1[ncol(tmp1)+1]<-pred
@@ -408,7 +408,7 @@ year = wyear,
 period ="all years",
 season = "winter",
 area_code = area,
-model_type = "GLM DOY AR1 ALPHA+TAU SPATIAL",
+model_type = "GLM MONTH AR1 ALPHA+TAU SPATIAL",
 species_id=sp.id,
 species_name=species_name,
 species_sci_name=species_sci_name,
@@ -468,7 +468,7 @@ y2 <- nyears
   #write output to table   
   trend.out<-NULL
   trend.out <- pred.ch %>%
-    mutate(model_type="GLM DOY AR1 ALPHA+TAU SPATIAL", 
+    mutate(model_type="GLM MONTH AR1 ALPHA+TAU SPATIAL", 
            model_family = fam,
            years = paste(Y1, "-", Y2, sep = ""),
            year_start=Y1, 
@@ -639,7 +639,7 @@ m = as.vector((exp(m)-1)*100)
     year = wyear,
     period ="all years",
     season = "winter",
-    model_type = "GLM DOY AR1 ALPHA+TAU SPATIAL",
+    model_type = "GLM MONTH AR1 ALPHA+TAU SPATIAL",
     species_id=sp.id,
     species_name=species_name,
     species_sci_name=species_sci_name,
@@ -722,7 +722,7 @@ m = as.vector((exp(m)-1)*100)
     mutate(trnd = trend, 
            lower_ci = lci, 
            upper_ci = uci,
-           model_type="GLM DOY AR1 ALPHA+TAU SPATIAL", 
+           model_type="GLM MONTH AR1 ALPHA+TAU SPATIAL", 
            model_family = fam,
            years = paste(Y1, "-", Y2, sep = ""),
            year_start=start_year, 
@@ -868,7 +868,7 @@ m = as.vector((exp(m)-1)*100)
   #write output to table   
   trend.out<-NULL
   trend.out <- slope_trends %>%
-    mutate(model_type="GLM DOY AR1 ALPHA+TAU SPATIAL", 
+    mutate(model_type="GLM MONTH AR1 ALPHA+TAU SPATIAL", 
            model_family = fam,
            years = paste(Y1, "-", Y2, sep = ""),
            year_start=Y1, 

@@ -38,6 +38,9 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   #create day of year column 
   in.BCCWS$doy <- as.numeric(format(as.Date(paste(in.BCCWS$YearCollected, in.BCCWS$MonthCollected, in.BCCWS$DayCollected, sep="-")), "%j"))
   
+  in.BCCWS$wmonth <-in.BCCWS$wmonth <- ifelse(dat$survey_month >= 9, 
+                                            dat$survey_month - 8, 
+                                            dat$survey_month + 4)
   
   # keep only one survey per month by selecting the first survey if there are duplicates
   in.BCCWS <- in.BCCWS %>% group_by(SurveyAreaIdentifier, YearCollected, MonthCollected) %>% slice_min(doy) %>% ungroup()

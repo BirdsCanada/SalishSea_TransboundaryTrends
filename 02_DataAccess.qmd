@@ -132,6 +132,9 @@ Other non-target species are also removed i.e., any species detected less than 1
 
 This part of the code also creates and events martix for each program. This is what is used for zero-filling during the species ir guild specific analysis.
 
+- wmonth = survey month (`1=September to 8=Arpil) 
+- wyear
+
 ```{r}
 
 #Manually specify the start and end year of the analysis

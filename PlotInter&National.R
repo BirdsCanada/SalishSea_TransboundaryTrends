@@ -20,7 +20,7 @@ all.trends <- all.trends[rowSums(is.na(all.trends)) < ncol(all.trends), ]
 all.trends<-all.trends %>% dplyr::select(area_code, period, species_code, species_id, years, trnd, lower_ci, upper_ci, index_type, percent_change) %>% filter(period=="all years")
 all.trends<-left_join(all.trends, sp.tax, by=c("species_id"="species_id"))
 
-end.trnd<-all.trends %>% filter(index_type==type)
+end.trnd<-all.trends %>% filter(index_type==plot.type)
 
 ed.trnd <- end.trnd %>%
   mutate(sp.trnd = paste(site.list[m], " ", round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
