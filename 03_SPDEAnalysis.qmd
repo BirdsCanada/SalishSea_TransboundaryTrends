@@ -80,6 +80,7 @@ nsites <- 10
 
 #Set the distributional assumption. Here we select 'nbinomal' but this may need to adjust if there is overdispersion. 
 
+#fam<-'zeroinflatednbinomial1'
 fam<-'nbinomial'
 #fam<-'poisson'
 
@@ -88,14 +89,12 @@ prec.prior <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
 hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.05)))
 
 # SPDE spatail priors
-prior.range = c(500, 0.5)
-prior.sigma = c(0.5, 0.1)
+prior.range = c(50, 0.01) # 1% prob range < 150 km
+prior.sigma = c(0.2, 0.1) # 10% prob sigma > 0.2
 
 ```
 
 -   For a guild-specific analysis, select the guild you wish to analyse (i.e., migration, diet, or family), and the species will be used as a random effect in the model.
-
-<!-- -->
 
 -   Select the guild and distributional family.
 

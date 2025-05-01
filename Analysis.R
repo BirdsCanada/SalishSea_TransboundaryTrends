@@ -74,28 +74,27 @@ if(guild=="Yes"){
     
     #Subset the data for the species
     dat <- sp.dat %>% filter(CommonName==sp.list[i])
-    dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, .keep_all = TRUE)
-    sp.code<-sp.list[i]
-    dat$SpeciesCode<-sp.list[i]
-    
-    ##Assign species names
-    sp.codes<-meta_species_taxonomy()
-    sp.codes<-sp.codes %>% dplyr::select(species_id, english_name, scientific_name)
-    sp.id<-species_id <- sp.codes %>%
-      filter(english_name == sp.code) %>%
-      pull(species_id)
-    
-    if (length(sp.id) == 0) {
-      sp.id <- species_name
+    dat<-dat %>% distinct(ProjectCode, SpeciesCode, CommonName, species_id, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, .keep_all = TRUE)
+   
+    sp.code <- unique(dat$SpeciesCode)
+    if (length(sp.code) == 0) {
+      sp.code <- unique(dat$CommonName) #for group species
     }
-    species_name<-sp.code
     
-    species_sci_name <- sp.codes %>%
-      filter(english_name == sp.code) %>%
-      pull(scientific_name)
+    if(length(sp.code)>1){
+      sp.code<-unique(dat$CommonName)
+    }
     
+    sp.id<- unique(dat$species_id)
+    if (length(sp.id) == 0) {
+      sp.id <- unique(dat$CommonName) #for group species
+    }
+    
+    species_name<-unique(dat$CommonName)
+    
+    species_sci_name <- unique(dat$scientific_name) #for group species
     if (length(species_sci_name) == 0) {
-      species_sci_name <- species_name
+      species_sci_name <- unique(dat$CommonName) #for group species
     }
     
     }
@@ -104,7 +103,7 @@ if(guild=="Yes"){
     dat<-left_join(event, dat, by= c("ProjectCode", "SurveyAreaIdentifier", "wyear", "wmonth", "YearCollected", "MonthCollected", "DayCollected"))
 #Observation Counts will be backfilled with a 0 whenever it is NA
     dat$ObservationCount[is.na(dat$ObservationCount)]<-0
-    dat$CommonName[is.na(dat$CommonName)]<-sp.code
+    dat$CommonName[is.na(dat$CommonName)]<-species_name
     dat$SpeciesCode[is.na(dat$SpeciesCode)]<-sp.code
   
 #remove extreme outliers 
@@ -154,7 +153,7 @@ if(min.data==TRUE){
     dat <- dat %>% mutate( 
       std_yr = wyear - Y2,
       kappa = as.integer(factor(dat$SurveyAreaIdentifier)),
-      year_idx = as.integer(wyear - mean_wyear), #intercept is the expected count during the most recent year of data collection. 
+      #year_idx = as.integer(wyear - mean_wyear), #intercept is the expected count during the most recent year of data collection. 
       wmonth_idx = as.integer(wmonth), 
       sp_idx = as.integer(factor(CommonName)))%>%
       st_as_sf(coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326, remove = FALSE) %>% 
@@ -163,27 +162,23 @@ if(min.data==TRUE){
           easting = st_coordinates(.)[, 1],
           northing = st_coordinates(.)[, 2]) %>%
         arrange(SurveyAreaIdentifier, wyear)
-    
-      # dat <- st_transform(dat, crs = utm_crs) %>%
-      # mutate(
-      #   easting = st_coordinates(.)[, 1]/1000,
-      #   northing = st_coordinates(.)[, 2]/1000) %>%
-      # arrange(SurveyAreaIdentifier, wyear)
-    
+
    if(guild=="Yes"){
      
      dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
      
      formula<- ObservationCount ~ -1 + #year_idx + 
        f(kappa, model="iid", hyper=hyper.iid) +  #in the spatial model we remove site as the variation will be captured in the spatial component. 
-       f(sp_idx, model="iid", hyper=hyper.iid)+
-       f(wmonth_idx, model = "ar1", hyper=prec.prior)  
+       f(sp_idx, model="iid", hyper=hyper.iid) +
+       #f(wmonth_idx, model = "ar1", hyper=prec.prior) 
+       f(wmonth_idx, model = "seasonal", season.length = 7) #Represent within-sampled-period seasonality
      
    }else{
     
      formula<- ObservationCount ~ -1 + #year_idx +
-      f(kappa, model="iid", hyper=hyper.iid) + 
-      f(wmonth_idx, model = "ar1", hyper=prec.prior) 
+      f(kappa, model="iid", hyper=hyper.iid) +
+      #f(wmonth_idx, model = "ar1", hyper=prec.prior) 
+      f(wmonth_idx, model = "seasonal", season.length = 7) #Represent within-sampled-period seasonality
 
    }
      
@@ -259,7 +254,7 @@ N<-nrow(dat)
       Covariates<- data.frame(
         Intercept=rep(1, N),
        # kappa = dat$kappa, #removed from spatial model
-        year_idx = dat$year_idx, 
+       # year_idx = dat$year_idx, 
         sp_idx = dat$sp_idx,
         wmonth_idx = dat$wmonth_idx
       )
@@ -268,9 +263,9 @@ N<-nrow(dat)
 
     Covariates<- data.frame(
       Intercept=rep(1, N),
-      year_idx = dat$year_idx, 
+    #  year_idx = dat$year_idx, 
     #  kappa = dat$kappa, #removed from spatial model
-      wmonth_idx = dat$wmonth_idx
+       wmonth_idx = dat$wmonth_idx
     )
     }
 
@@ -302,8 +297,8 @@ N<-nrow(dat)
     
     mesh2<- inla.mesh.2d(Loc_unique,
       boundary = boundary_segment,  # Your polygon boundary
-      max.edge = c(150, 200),       # Inner/outer resolution (in CRS units)
-      cutoff = 5,                  # Minimum distance between vertices
+      max.edge = c(50, 150),       # Inner/outer resolution (in CRS units)
+      cutoff = 25,                  # Minimum distance between vertices
       crs = fm_crs(dat)             # Use the same CRS as your data
     )
     
@@ -313,22 +308,6 @@ N<-nrow(dat)
       prior.sigma = prior.sigma
     )
     
-    
-    # Bound<-inla.nonconvex.hull(Loc_unique)
-    # 
-    # mesh2<-fm_mesh_2d_inla(Loc_unique,
-    #                        #mesh2<-inla.mesh.2d(Loc,
-    #                        boundary = Bound,
-    #                        max.edge = c(150, 200), # km inside and outside
-    #                        cutoff = 0,
-    #                        crs = fm_crs(dat))
-    # #SPDE
-    # spde <- inla.spde2.pcmatern(  
-    #   mesh = mesh2,
-    #   prior.range = c(500, 0.5),
-    #   prior.sigma = c(0.5, 0.1)
-    # )
-
     #Spatial Fields
     # make index sets for the spatial model
     alpha_idx <- inla.spde.make.index(name = "alpha", n.spde = spde$n.spde) #n.repl is used to account for repeated measure at the same location over time.
@@ -352,20 +331,22 @@ N<-nrow(dat)
     
     if(guild=="Yes"){
       
-      formula.sp<- count ~ -1 + Intercept + 
-      f(year_idx, model="iid", hyper=hyper.iid) + #so that alpha can be calculated per year
-      # f(kappa, model="iid", hyper=hyper.iid) + #removed from spatial model
-      f(sp_idx, model="iid", hyper=hyper.iid) + 
-      f(wmonth_idx, model = "ar1", hyper=prec.prior) +
+      formula.sp<- count ~ -1 + Intercept + factor(wmonth_idx) +
+      #f(year_idx, model="iid", hyper=hyper.iid) + #so that alpha can be calculated per year
+      #f(kappa, model="iid", hyper=hyper.iid) + #removed from spatial model
+      #f(sp_idx, model="iid", hyper=hyper.iid) + 
+      #f(wmonth_idx, model = "ar1", hyper=prec.prior) +
+      f(wmonth_idx, model = "seasonal", season.length = 7) +  #Represent within-sampled-period seasonality
       f(alpha, model =spde) + 
       f(tau, model =spde)
     
       }else{
     
-     formula.sp<- count ~ -1 + Intercept + 
-      f(year_idx, model="iid", hyper=hyper.iid) +
-      # f(kappa, model="iid", hyper=hyper.iid) + 
-      f(wmonth_idx, model = "ar1", hyper=prec.prior) +
+     formula.sp<- count ~ -1+ Intercept + factor(wmonth_idx) +
+      #f(year_idx, model="iid", hyper=hyper.iid) +
+      #f(kappa, model="iid", hyper=hyper.iid) + 
+      #f(wmonth_idx, model = "ar1", hyper=prec.prior) +
+      #f(wmonth_idx, model = "seasonal", season.length = 7) + #Represent within-sampled-period seasonality
       f(alpha, model =spde) + 
       f(tau, model =spde)
     }   
@@ -390,7 +371,6 @@ N<-nrow(dat)
    write.table(z.out, file = paste(out.dir,  name, "_ModelComparison.csv", sep = ""),
                col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
    
-
 #Calculate Posterior estimate of abundance
 nsamples<- 100
 post.sample1 <-NULL #clear previous
@@ -565,7 +545,7 @@ m =  apply(ne,1,slope)
 m = as.vector((exp(m)-1)*100)
   
 
-  #include slop output in new table
+  #include slope output in new table
   trend.out$index_type="Slope trend"
   trend.out$trnd<-median(m, na.rm=TRUE)
   trend.out$lower_ci<-quantile(m, prob=0.025)
@@ -1063,7 +1043,7 @@ m = as.vector((exp(m)-1)*100)
     # plot together
     # multiplot(ps, pa, pt, ps_range95, pa_range95, pt_range95, cols = 2)
     
-    pdf(paste(plot.dir, sp.list[i], "_spdePlot.pdf", sep=""))
+    pdf(paste(plot.dir, species_name, "_spdePlot.pdf", sep=""))
     multiplot(pa, pt, pa_range95, pt_range95, cols=2)
     while(!is.null(dev.list())) dev.off()
    

@@ -120,22 +120,23 @@ During this process some species are combined following advise from the survey c
 
 -   "Large Gull" = gull (large) + WEGU + GWGU hybrid + Glaucous-winger + Western + Herring + Glaucous + Iceland (Thayer's) + California Gull
 
--   "Greater/Lesser Scaup" = scaup sp + Lesser + Greater Scaup
+-   "Greater-Lesser Scaup" = scaup sp + Lesser + Greater Scaup
 
--   "Eared/Horned Grebe"
+-   "Eared-Horned Grebe"
 
--   "Western/Clark's Grebe"
+-   "Western-Clark's Grebe"
 
--   "Canada/Cackling Goose"
+-   "Canada-Cackling Goose"
 
 Other non-target species are also removed i.e., any species detected less than 10 times over all years is considered rare and removed.
 
 This part of the code also creates and events martix for each program. This is what is used for zero-filling during the species ir guild specific analysis.
 
--   wmonth = MonthCollected (1=September to 8=April)
+-   wmonth = MonthCollected (1=September to 8=April) #This term was unidentifiable. We will therefore that the max winter count
 -   wyear
--   ObservationCout3 for BCCWS to match
+-   ObservationCount3 for BCCWS to match
 -   Sampling events matrix
+
 
 ```{r}
 

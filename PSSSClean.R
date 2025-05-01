@@ -103,7 +103,7 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
         .default = CommonName), 
     CommonName = case_match(
       CommonName,
-      c("scaup sp.", "Lesser Scaup", "Greater Scaup") ~ "Greater-Lesser Scaup",
+      c("scaup sp.", "Lesser Scaup", "Greater Scaup", "Greater-Lesser Scaup") ~ "Greater-Lesser Scaup",
         .default = CommonName
       ), 
     CommonName = case_match(

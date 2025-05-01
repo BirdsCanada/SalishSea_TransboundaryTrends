@@ -107,7 +107,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
         .default = CommonName), 
       CommonName = case_match(
         CommonName,
-        c("scaup sp.", "Lesser Scaup", "Greater Scaup", "Greater-Lesser Scaup") ~ "Greater/Lesser Scaup",
+        c("scaup sp.", "Lesser Scaup", "Greater Scaup", "Greater/Lesser Scaup") ~ "Greater-Lesser Scaup",
         .default = CommonName
       ), 
       CommonName = case_match(
