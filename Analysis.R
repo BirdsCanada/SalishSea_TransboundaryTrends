@@ -113,6 +113,17 @@ if(guild=="Yes"){
 #remove extreme outliers 
     outlier<-(quantile(dat$ObservationCount, probs = c(0.99)))*3
     dat<-dat %>% filter(ObservationCount<outlier)
+
+if(nrow(dat)>0){        
+    
+#remove routes on which a species was never detected. 
+    site.summ <- melt(dat, id.var = "SurveyAreaIdentifier",	measure.var = "ObservationCount")
+    site.summ <- cast(site.summ, SurveyAreaIdentifier ~ variable,	fun.aggregate="sum")
+    site.sp.list <- unique(subset(site.summ, select = c("SurveyAreaIdentifier"), ObservationCount >= 1))
+    
+    # Limit raw data to these species, i.e., those that were observed at least once on a route 
+    dat <- merge(dat, site.sp.list, by = c("SurveyAreaIdentifier"))
+    
         
 #Remove SurveyAreaIdentifier from the data on where the sum of ObersevationCount is 0 across all years
 #If a species was never detected on a route, we will not include that route in the species specific analysis
@@ -272,7 +283,7 @@ N<-nrow(dat)
         kappa = dat$kappa, 
         sp_idx = dat$sp_idx,
         #protocol = dat$protocol,
-        year_idx=dat$year_idx,
+        year_idx=dat$year_idx
         #wmonth_idx = dat$wmonth_idx
       )
       
@@ -282,7 +293,7 @@ N<-nrow(dat)
       Intercept=rep(1, N),
        kappa = dat$kappa, 
        #protocol = dat$protocol, 
-       year_idx=dat$year_idx, 
+       year_idx=dat$year_idx 
        #wmonth_idx = dat$wmonth_idx
     )
     }
@@ -1076,7 +1087,8 @@ y2 <- nyears
   #   while(!is.null(dev.list())) dev.off()
   #  
   #   } # end if Salish Sea create map
-   } #end min.data  
+  } #end nrow data 
+  } #end min.data  
   }#end SpeciesLoop
 
 

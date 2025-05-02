@@ -6,9 +6,8 @@ editor_options:
   chunk_output_type: console
 ---
 
-# Data Analysis - SPDE
 
-## 3 National Trends
+# 3. SPDE Anlysis {#3.0SPDE}
 
 A first assessment of coastal waterbird trends will be done for the full extent of the Salish Sea, and for each country separately. This is done on a species-by-species basis and is done without using a spatially explicit model to start.
 
@@ -39,7 +38,7 @@ events<-read.csv("Data/events.csv")
 
 ```
 
-### 3.1 Set Analysis Parameters
+### 3.1 Set Analysis Parameters {#3.1SPDE}
 
 Here the user has several customization options.
 
@@ -104,13 +103,13 @@ prior.sigma = c(0.05, 0.1) # 5% prob sigma > 0.1
 
 #To view your options of guilds:
 migration<-unique(sp.data$Migration)
-view(migration)
+#view(migration)
 
 diet<-unique(sp.data$Diet)
-view(diet)
+#view(diet)
 
 family<-unique(sp.data$family_name)
-view(family)
+#view(family)
 
 #If you wish to do a guild-specific analysis, change to "Yes" and specify the `type` as either "migration", "diet", or "family". This will override the species list above. 
 
@@ -119,7 +118,7 @@ type <-"family"
 
 ```
 
-### 3.2 Run the Analysis and Plot Output
+### 3.2 Run the Analysis and Plot Output {#3.2SPDE}
 
 ```{r}
 
@@ -145,7 +144,7 @@ Note that the Dispersion Statistic file in the Output folder should be reviewed 
 
 ## Remove below
 
-### 3.3 Combine and Plot Results
+### 3.3 Combine and Plot Results {#3.3SPDE}
 
 If you have run the analysis for all three regions (SalishSea, BCCWS, PSSS) you can now combine the results into a single plot and table for review.
 
