@@ -8,7 +8,7 @@ editor_options:
 
 # Data Analysis - SPDE
 
-## 3 International and National Trends
+## 3 National Trends
 
 A first assessment of coastal waterbird trends will be done for the full extent of the Salish Sea, and for each country separately. This is done on a species-by-species basis and is done without using a spatially explicit model to start.
 
@@ -59,10 +59,10 @@ Here the user has several customization options.
 
 #To view your options of species
 species<-unique(sp.data$CommonName)
-view(species)
+#view(species)
 
 #Define your `site` as either "SalishSea", "BCCWS" or "PSSS". 
-area <- "SalishSea"
+area <- "BCCWS"
 
 #Create a list of species using all available species in the shared dataset.
 species.list<-"ALL"
@@ -80,17 +80,17 @@ nsites <- 10
 
 #Set the distributional assumption. Here we select 'nbinomal' but this may need to adjust if there is overdispersion. 
 
-#fam<-'zeroinflatednbinomial1'
 fam<-'nbinomial'
+#fam<-'zeroinflatednbinomial1'
 #fam<-'poisson'
 
 #Priors for the random effects
 prec.prior <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
 hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.05)))
 
-# SPDE spatail priors
-prior.range = c(50, 0.01) # 1% prob range < 150 km
-prior.sigma = c(0.2, 0.1) # 10% prob sigma > 0.2
+# SPDE spatial priors
+prior.range = c(50, 0.01) # 1% probability range <50 km (Salish Sea ~400 km)
+prior.sigma = c(0.05, 0.1) # 5% prob sigma > 0.1
 
 ```
 
@@ -127,7 +127,7 @@ type <-"family"
 #Give your analytically output file a unique name 
 #e.g., BCCWS_Species, SalishSea_guild
 
-name<-"Salish_Sea_Species"
+name<-"BCCWS_Species"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 source("OutputTables1.R")

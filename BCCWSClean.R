@@ -85,7 +85,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # ensure that each SurveyAreaIdentifier has a single decimal latitude and longitude. If multiple, take the first
   event.BCCWS <- event.BCCWS %>% group_by(ProjectCode, SurveyAreaIdentifier) %>% slice_min(DecimalLatitude) %>% ungroup()
   
-  # removed NA ObservationCounts
+    # removed NA ObservationCounts
   # in.BCCWS <- in.BCCWS %>% filter(!is.na(ObservationCount))
   
   # retain columns that are needed for the analysis
@@ -126,8 +126,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
         .default = CommonName
       ))
   
-
-  ##MEW GULL NEEDS CHANGE TO SHORT BILLED GULL IN THE DATA
+   ##MEW GULL NEEDS CHANGE TO SHORT BILLED GULL IN THE DATA
   ##This has two species_id 5140 and 5142
   in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5140] <- "SBIG"
   in.BCCWS$SpeciesCode[in.BCCWS$species_id == 5142] <- "SBIG"
@@ -139,6 +138,7 @@ in.BCCWS <- read.csv("Data/BCCWS.csv") # reads in back-up copy of database
   # write index.data to file
    write.csv(in.BCCWS, "Data/BCCWS.clean.csv")
    write.csv(event.BCCWS, "Data/BCCWS.events.csv")
+   
    
   
    

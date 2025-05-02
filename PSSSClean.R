@@ -68,7 +68,10 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
   
   # before we do more cleaning, make your events layer to ensure we have captured all the survey events. 
   # create an events matrix for future zero filling
+  
+  #events for monthly analysis
   event.PSSS <- in.PSSS %>% dplyr::select(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, DecimalLatitude, DecimalLongitude, DurationInHours) %>% distinct()
+  
   # if there are multiple events in a single day (now caused by Duration in Hours), take the minimum
   event.PSSS <- event.PSSS %>% group_by(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected) %>% slice_min(DurationInHours) %>% ungroup()
   
@@ -121,8 +124,8 @@ in.PSSS <- in.PSSS %>% mutate(DecimalTimeObservationsStarted = (TimeObservations
       c("Clark's Grebe", "Western Grebe") ~ "Western-Clark's Grebe",
         .default = CommonName
       ))
-  
-  
+   
   # write index.data to file
   write.csv(in.PSSS, "Data/PSSS.clean.csv")
   write.csv(event.PSSS, "Data/PSSS.events.csv")
+ 

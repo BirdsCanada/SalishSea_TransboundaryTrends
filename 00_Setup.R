@@ -29,7 +29,7 @@ plot.dir <- "Output/Plots/"
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
                  exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
-                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, 
+                 rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, splines, 
                  maps, splancs, spdep, igraph, ggspatial, terra, tidyterra, stringr, reshape2, measurements, ggOceanMaps)
 
 
@@ -136,6 +136,31 @@ guild<-"No"
 # plot(st_geometry(poly_buffer), border = 'red', add = TRUE)
 # 
 # st_write(water_buffer, "Data/Spatial/Salish_Sea_Water_Polygon.shp")
+# 
+# canada <- ne_states(country = "canada", returnclass = "sf") 
+# BC<- canada[canada$name=="British Columbia",]
+# 
+# us<- ne_states(country = "united states of america", returnclass = "sf") 
+# WA<- us[us$name=="Washington",]
+# 
+# # Ensure both layers use the same CRS
+# if (st_crs(map) != st_crs(BC)) {
+#   map <- st_transform(map, st_crs(BC))
+# }
+# 
+# # Clip the water polygon to BC
+# map_BC <- st_intersection(map, BC)
+# st_write(map_BC, "Data/Spatial/BC_Water_Polygon.shp", layer_options = "ENCODING=UTF-8")
+# 
+# # Ensure both layers use the same CRS
+# if (st_crs(map) != st_crs(WA)) {
+#   map <- st_transform(map, st_crs(WA))
+# }
+# 
+# # Clip the water polygon to BC
+# map_WA <- st_intersection(map, WA)
+# st_write(map_WA, "Data/Spatial/WA_Water_Polygon.shp", layer_options = "ENCODING=UTF-8")
 
 map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
-
+BCmap<- st_read("Data/Spatial/BC_Water_Polygon.shp")
+WAmap<- st_read("Data/Spatial/WA_Water_Polygon.shp")
