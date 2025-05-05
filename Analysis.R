@@ -326,8 +326,8 @@ N<-nrow(dat)
     
     mesh2<- inla.mesh.2d(Loc_unique,
       boundary = boundary_segment,  # Your polygon boundary
-      max.edge = c(100, 200),       # Inner/outer resolution (in CRS units)
-      cutoff = 50,                  # Minimum distance between vertices
+      max.edge = c(25, 50),       # Inner/outer resolution (in CRS units)
+      cutoff = 2,                  # Minimum distance between vertices
       crs = fm_crs(dat)             # Use the same CRS as your data
     )
     
@@ -365,7 +365,7 @@ N<-nrow(dat)
       #f(protocol, model = "iid", hyper = prec.prior) +
       #wmonth_idx +
       #f(year_idx, model="iid", hyper=hyper.iid) + #so that alpha can be calculated per year
-      f(kappa, model="iid", hyper=prec.prior) + #site effect 
+      #f(kappa, model="iid", hyper=prec.prior) + #site effect replaced with spatail 
       f(sp_idx, model="iid", hyper=hyper.iid) + 
       #f(wmonth_idx, model = "rw1", cyclic=TRUE) +
       #f(wmonth_idx, model = "seasonal", season.length = 7) +
@@ -380,7 +380,7 @@ N<-nrow(dat)
       #f(protocol, model = "iid", hyper = prec.prior)+
       #wmonth_idx +
       #f(year_idx, model="iid", hyper=hyper.iid) +
-      f(kappa, model="iid", hyper=prec.prior) + #site effect
+      #f(kappa, model="iid", hyper=prec.prior) + #site effect replaced with spatial
       #f(wmonth_idx, model = "rw1", cyclic = TRUE) +
       #f(wmonth_idx, model = "seasonal", season.length = 7) + #Represent within-sampled-period seasonality
       f(alpha, model =spde) 
