@@ -1,151 +1,26 @@
 ---
-title: "04_iCARAnalysis"
+title: "04_iCAR"
 format: html
 editor: visual
-editor_options: 
-  chunk_output_type: console
 ---
 
-# Data Analysis - iCAR 
+## Quarto
 
-The Intrinsic Conditional Autoregressive (iCAR) analysis is suitable if you are interested deriving outputs for distinct polygons that segregate your study area. These can be irregular polygons (e.g., states, provinces, counties, watersheds) or a regular grid of polygons that the user selects to overlay on the study area.
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
 
-For this analysis we provide two examples of how to load custom spatial data layers and run a models which calculate trends and indices of abundance for each region separately using an Intrinsic Conditional Autoregressive (iCAR) framework.
+## Running Code
 
-Run setup if starting a new environment.
-
-```{r}
-
-source("00_Setup.R")
-
-#Manually Specify the start and end year of the analysis. These years should match those selected for the data cleaning scripts. 
-Y1 = 2008
-Y2 = 2022
-```
-
-## 4 Custom Regions
-
-The user may be interested in loading custom spatial data layers and running a models which calculates trends and annual indices of abundance for each region separately. This can be done by loading a .shp or .gbd which you saved in the `Data/Spatial` folder. 
-
-Because there are many alternatives we will demonstrate how to do this with a layer containing distinct basins in the Puget Sound region of the Salish Sea. These are the same basins used by the Midwinter Aerial Bird Survey Salish Sea Basins and can be freely downloaded from the Washington Department of Fish and Wildlife (website)[https://data-wdfw.opendata.arcgis.com/documents/0d57403ea9eb45b7a8acabf3dd58c7b0/about]. Save this .gdb to the `Data/Spatial` folder for processing here.  
-
-### 4.1 Load and Prepare Spatial Data
-
-```{r }
-
-#Load your saved events data 
-events<-read.csv("Data/events.csv")
-
-#Create a dataframe with a single row for each unique sampling point using DecimalLatitude and DecimalLongitude
-points<-events %>%  dplyr::select(DecimalLatitude, DecimalLongitude, ProjectCode) %>% distinct(DecimalLatitude, DecimalLongitude, .keep_all = TRUE)
-
-#Filter points for PSSS for this example
-points<-points %>% filter(ProjectCode=="PSSS")
-#Create an sf object and assign the correct crs
-points_sf <- st_as_sf(points, coords = c("DecimalLongitude", "DecimalLatitude"), crs = 4326)  
-                                                                        
-#Open the Midwinter Aerial Survey geodatabas
-
-#Specify path
-path <- "Data/Spatial/MidwinterAerialSeabirdSurveys.gdb"
-#Specify layers
-layers <- "PSEMP_Analysis_Strata"
-#Read data 
-psemp_data <- st_read(path, layer = layers)
-psemp_data$StrataID <- as.factor(psemp_data$StrataID)
-
-#Cast the geometry to MULTIPOLYGON
-psemp_data$Shape <- st_cast(psemp_data$Shape, "MULTIPOLYGON")
-psemp_data <- st_make_valid(psemp_data)
-
-#Transform sample location to same crs as polygons
-points_sf <- st_transform(points_sf, crs = st_crs(psemp_data))
-
-#Assign each sampling point to the nearest polygon using the st_nearst_feature function
-nearest <- st_nearest_feature(points_sf, psemp_data)
-points$Basin<-psemp_data$Basin[nearest] 
-#Filter the polygons to only include those with points
-psemp_data<-psemp_data %>% filter(Basin %in% unique(points$Basin))
-
-#Amalgamate the Stata into single polygons for each Basin
-basin <- psemp_data %>%
-  group_by(Basin) %>%  
-  summarize(geometry = st_union(Shape), .groups = 'drop')  
-
-#Map the point and polygon data
-ggplot(data = basin) +
-  geom_sf(aes(fill = Basin)) + 
-  geom_sf(data = points_sf, color="black", size = 1)+ 
-  labs(title = "PSEMP Basins",
-       fill = "Basin Name") +
-  #theme_minimal() +  # Optional: Use a minimal theme
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis text
-        legend.position = "right"  # Optional: Position the legend
-  )
-
-#Create the adjacency matrix for the iCAR analysis
-nb1 <- spdep::poly2nb(basin, row.names=basin$Basin); nb1
-
-# Neighbour list object:
-# Number of regions: 8 
-# Number of nonzero links: 18 
-# Percentage nonzero weights: 28.125 
-# Average number of links: 2.25
-
-is.symmetric.nb(nb1, verbose = FALSE, force = TRUE)
-nb2INLA("nb1.graph", nb1)
-nb1.adj <- paste(getwd(),"/nb1.graph", sep="")
-g1 <- inla.read.graph("nb1.graph")
-
-```
-
-### 4.2 Load and Prepare Data
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
 
 ```{r}
-
-#Define your `site` as either "SalishSea", "BCCWS" or "PSSS".
-site <- "PSSS"
-
-#Load your saved species data 
-sp.data<-read.csv("Data/sp.data.csv")
-
-#Create a list of species
-sp.list<-unique(sp.data$SpeciesCode)
-#Or you can manually select species
-#sp.list <- c("AMWI", "GRSC") 
-
-#Load your saved events data which is needed for zero-filling
-events<-read.csv("Data/events.csv")
-
-#Create a data frame to store the results. 
-#This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
-source("OutputTables2.R")
-
-#Select the minimum data requirements for the analysis. The ones selected here were done following the inspection of the International data set and likely work both the National analyses. However, finer scale assessment may need to assess their suitability. 
-
-#Here, the minimum data required across routes with at least one detection, each species needs an overall abundance per year > 10, need to be detected in > one-half of the survey years, and on > 10 survey routes. Users may choose to adjust these parameters. 
-
-min.abundance <- 10
-min.years <- (Y2-Y1)/2
-nroutes <- 10
-
-#Set the distributional assumption. Here we select 'nbinomal' but this may need to adjust if there is overdispersion. 
-
-fam<-'nbinomial'
-#fam<-'poisson'
-
+1 + 1
 ```
 
-### 3.2 Run the Analysis and Plot Output
+You can add options to executable code like this
 
 ```{r}
-
-#Now we can initiate the analysis.  
-source("Analysis2.R")
-
-#Plot the results to a pdf for inspection. 
-#You will find the outputs in your Output/Plot folder with the name site_IndexPlot.pdf
-source("PlotTrends2.R")
-
-
+#| echo: false
+2 * 2
 ```
+
+The `echo: false` option disables the printing of code (only output is displayed).

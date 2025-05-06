@@ -161,6 +161,4 @@ guild<-"No"
 # map_WA <- st_intersection(map, WA)
 # st_write(map_WA, "Data/Spatial/WA_Water_Polygon.shp", layer_options = "ENCODING=UTF-8")
 
-map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
-BCmap<- st_read("Data/Spatial/BC_Water_Polygon.shp")
-WAmap<- st_read("Data/Spatial/WA_Water_Polygon.shp")
+
