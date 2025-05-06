@@ -24,10 +24,10 @@ write.table(trends.csv, file = paste(out.dir,
                                      name, "_TrendsEndpoint.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
-#Slope Trends
-write.table(trends.csv, file = paste(out.dir, 
-                                     name, "_TrendsSlope.csv", sep = ""), 
-            row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
+# #Slope Trends
+# write.table(trends.csv, file = paste(out.dir, 
+#                                      name, "_TrendsSlope.csv", sep = ""), 
+#             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 ## Create .csv file for dispersion stat
 

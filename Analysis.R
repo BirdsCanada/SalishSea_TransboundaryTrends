@@ -116,13 +116,19 @@ if(guild=="Yes"){
 
 if(nrow(dat)>0){        
     
-#remove routes on which a species was never detected. 
-    site.summ <- melt(dat, id.var = "SurveyAreaIdentifier",	measure.var = "ObservationCount")
-    site.summ <- cast(site.summ, SurveyAreaIdentifier ~ variable,	fun.aggregate="sum")
-    site.sp.list <- unique(subset(site.summ, select = c("SurveyAreaIdentifier"), ObservationCount >= 1))
+    #Only retains routes on which a species was detected >1 years   
+    # Count the number of years each site had detection
+    site_years_detected <- aggregate(ObservationCount ~ SurveyAreaIdentifier + wyear, data = dat, FUN = sum)
+    site_years_detected$Detected <- site_years_detected$ObservationCount > 0
     
-    # Limit raw data to these species, i.e., those that were observed at least once on a route 
-    dat <- merge(dat, site.sp.list, by = c("SurveyAreaIdentifier"))
+    # Sum the number of years with detections for each site
+    site_detect_years <- aggregate(Detected ~ SurveyAreaIdentifier, data = site_years_detected, FUN = sum)
+    
+    # Filter for sites with detections in more than 2 years
+    sites_to_keep <- subset(site_detect_years, Detected > 1)$SurveyAreaIdentifier
+    
+    # Filter the main dataset
+    dat <- subset(dat, SurveyAreaIdentifier %in% sites_to_keep)    
     
         
 #Remove SurveyAreaIdentifier from the data on where the sum of ObersevationCount is 0 across all years
@@ -161,6 +167,7 @@ if(nrow(dat)>0){
 if(min.data==TRUE){
 
 ###Model without spatial effect on abundance 
+ 
   wyears <- unique(dat$wyear)
   mean_wyear <- max(wyears)
 
@@ -201,7 +208,7 @@ if(min.data==TRUE){
    }else{
     
      formula<- ObservationCount ~ -1 + 
-      f(year_idx, model = "rw1") + 
+      f(year_idx, model = "rw1") +  
       f(kappa, model="iid", hyper=hyper.iid)
       #f(protocol, model = "iid", hyper = prec.prior)
       #f(wmonth_idx, model = "ar1", hyper=prec.prior) 
@@ -365,7 +372,7 @@ N<-nrow(dat)
       #f(protocol, model = "iid", hyper = prec.prior) +
       #wmonth_idx +
       #f(year_idx, model="iid", hyper=hyper.iid) + #so that alpha can be calculated per year
-      #f(kappa, model="iid", hyper=prec.prior) + #site effect replaced with spatail 
+      f(kappa, model="iid", hyper=prec.prior) + #site effect replaced with spatail 
       f(sp_idx, model="iid", hyper=hyper.iid) + 
       #f(wmonth_idx, model = "rw1", cyclic=TRUE) +
       #f(wmonth_idx, model = "seasonal", season.length = 7) +
@@ -380,7 +387,7 @@ N<-nrow(dat)
       #f(protocol, model = "iid", hyper = prec.prior)+
       #wmonth_idx +
       #f(year_idx, model="iid", hyper=hyper.iid) +
-      #f(kappa, model="iid", hyper=prec.prior) + #site effect replaced with spatial
+      f(kappa, model="iid", hyper=prec.prior) + #site effect replaced with spatial
       #f(wmonth_idx, model = "rw1", cyclic = TRUE) +
       #f(wmonth_idx, model = "seasonal", season.length = 7) + #Represent within-sampled-period seasonality
       f(alpha, model =spde) 
@@ -389,14 +396,33 @@ N<-nrow(dat)
 
 
     #fit the spatial model using INLA
-    M1<-inla(formula.sp, family = fam, data = inla.stack.data(Stack), offset = log(dat$DurationInHours),
-                    control.predictor = list(A=inla.stack.A(Stack)),
-                    control.compute = list(dic=TRUE, waic=TRUE, config = TRUE),
-                    control.fixed = list(mean = 0, prec = 0.001), 
-             control.family = list(
-               hyper = list(theta = list(prior = "loggamma", param = c(3, 0.1)))
-             ), verbose =TRUE)
-
+    M1 <- inla(
+      formula.sp, 
+      family = fam, 
+      data = inla.stack.data(Stack), 
+      offset = log(dat$DurationInHours),
+      control.predictor = list(
+        A = inla.stack.A(Stack),  # Projector matrix
+        compute = TRUE,            # Store latent predictor
+        link = 1                   # Use the response-family link (log for NB)
+      ),
+      control.compute = list(
+        dic = TRUE,                # For model comparison
+        waic = TRUE,               # For model comparison
+        config = TRUE,             # Enable posterior sampling
+        cpo = TRUE                 # Optional: cross-validated PIT
+      ),
+      control.fixed = list(
+        mean = 0,                  # Prior mean for fixed effects
+        prec = 0.001               # Prior precision for fixed effects
+      ), 
+      control.family = list(
+        hyper = list(theta = list(prior = "loggamma", param = c(3, 0.1)))
+      ),
+      verbose = TRUE
+    )
+    
+    
   #Compare the DIC and WIC values
    z.out<-NULL
    dic<-c(M0$dic$dic, M1$dic$dic)
@@ -413,6 +439,57 @@ N<-nrow(dat)
 nsamples<- 100
 post.sample1 <-NULL #clear previous
 post.sample1<-inla.posterior.sample(nsamples, M1)
+
+##Assess model fit
+
+# Extract indices for observed data from the INLA stack  
+data_idx <- inla.stack.index(Stack, "FitGAM")$data  
+
+## Extract linear predictor (eta) and hyperparameters  
+eta_samples <- sapply(post.sample1, \(x) x$latent[data_idx, 1])
+size_samples <- sapply(  
+  post.sample1,  
+  \(x) x$hyperpar["size for the nbinomial observations (1/overdispersion)"]  
+)   
+
+# Account for offset (log(DurationInHours))  
+mu_samples <- exp(eta_samples) * dat$DurationInHours  
+
+# Simulate counts from the negative binomial distribution  
+
+# Simulate replicated counts  
+y_rep <- matrix(  
+  rnbinom(n = length(mu_samples), size = size_samples, mu = mu_samples),  
+  nrow = nrow(dat)  
+) 
+
+p_values <- sapply(1:nrow(dat), function(i) {  
+  mean(y_rep[i, ] >= dat$ObservationCount[i])  
+})
+
+median_rep <- apply(y_rep, 1, median)  
+
+plot_data <- data.frame(
+  Observed = dat$ObservationCount,
+  Predicted = median_rep
+)
+
+# Basic plot
+op<-ggplot(plot_data, aes(x = Observed, y = Predicted)) +
+  geom_point(alpha = 0.6, color = "#0072B2") +
+  geom_abline(intercept = 0, slope = 1, color = "#D55E00", 
+              linewidth = 1, linetype = "dashed") +
+  labs(x = "Observed Count", y = "Predicted Median Count",
+       title = "Observed vs. Predicted Counts") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+ggsave(paste(plot.dir, area, sp.list[i], "_ObservedPredictedSpatial.jpeg", sep = ""), plot = op, width = 10, height = 6, units = "in")
+
+
+
+###Extract estiamtess of alpha 
 
 tmp1<-NULL
 tmp1 <- dat %>% dplyr::select(wyear) %>% st_drop_geometry() 
@@ -1089,6 +1166,6 @@ y2 <- nyears
   #   } # end if Salish Sea create map
   } #end nrow data 
   } #end min.data  
-  }#end SpeciesLoop
+  } #end SpeciesLoop
 
 
