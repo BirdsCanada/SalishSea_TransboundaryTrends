@@ -187,11 +187,10 @@ if(min.data==TRUE){
         arrange(SurveyAreaIdentifier, wyear)
     
     # Aggregate data to annual max count
-    # dat <- dat %>%
-    #   group_by(SurveyAreaIdentifier, wyear) %>%
-    #   slice_max(ObservationCount, n = 1, with_ties = FALSE) %>%
-    #   ungroup()
-
+    dat <- dat %>%
+      group_by(SurveyAreaIdentifier, wyear) %>%
+      slice_max(ObservationCount, n = 1, with_ties = FALSE) %>%
+      ungroup()
 
    if(guild=="Yes"){
      

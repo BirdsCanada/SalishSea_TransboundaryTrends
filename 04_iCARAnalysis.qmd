@@ -51,10 +51,16 @@ Grid <- poly %>% st_filter(xy, .pred = st_intersects)
 #add SurveyAreaIdentifier to polygon name
 ##this is wrong and needs fixed. 
 loc.xy<- st_join(Grid, xy)
-grid<-loc.xy %>% select(SurveyAreaIdentifier, Name) %>% distinct() #select the name associated with your polygon
+grid<-loc.xy %>% 
+  st_drop_geometry() %>% 
+  select(SurveyAreaIdentifier, Name) %>%
+  distinct() #select the name associated with your polygon
 
 #joint to your events layer
-events
+events<-left_join(events, grid, by="SurveyAreaIdentifier")
+
+#remove the areas that fall outside the polygons
+events<-events %>% drop_na(Name)
 
 ```
 

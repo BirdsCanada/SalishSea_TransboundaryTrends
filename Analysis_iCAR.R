@@ -41,6 +41,7 @@ if(area=="SalishSea"){
 sp.dat<-sp.dat %>% filter(wyear != 2020)
 event<-event %>% filter(wyear != 2020)
 
+
 #If guild is set to "Yes" this will override the species list above.   
 if(guild=="Yes"){
   if(type == "migration"){
@@ -131,7 +132,7 @@ for(i in 1:length(sp.list)){
     # Sum the number of years with detections for each site
     site_detect_years <- aggregate(Detected ~ SurveyAreaIdentifier, data = site_years_detected, FUN = sum)
     
-    # Filter for sites with detections in more than 2 years
+    # Filter for sites with detections in more than 1 years
     sites_to_keep <- subset(site_detect_years, Detected > 1)$SurveyAreaIdentifier
     
     # Filter the main dataset
@@ -161,6 +162,60 @@ for(i in 1:length(sp.list)){
     #only continue if the species meets the minimum data requirements      
     if(min.data==TRUE){
       
+      #Prepare the parameters
+      
+      wyears <- unique(dat$wyear)
+      mean_wyear <- max(wyears)
+      
+      #Create index variables
+      dat <- dat %>% mutate( 
+        std_yr = wyear - Y2,
+        protocol = factor(ProjectCode), 
+        kappa = as.integer(factor(dat$SurveyAreaIdentifier)),
+        year_idx = as.integer(wyear - mean_wyear), #intercept is the expected count during the most recent year of data collection. 
+        wmonth_idx = as.factor(wmonth), 
+        sp_idx = as.integer(factor(CommonName)))%>%
+        arrange(SurveyAreaIdentifier, wyear)
+      
+      # Aggregate data to annual max count
+      dat <- dat %>%
+        group_by(SurveyAreaIdentifier, wyear) %>%
+        slice_max(ObservationCount, n = 1, with_ties = FALSE) %>%
+        ungroup()
+      
+      #Model Formular
+      f1 <- ObservationCount ~ -1 + 
+        
+      
+      if(guild=="Yes"){
+        
+        dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
+        
+        formula<- ObservationCount ~ -1 + 
+          f(year_idx, model = "rw1") + 
+          f(sp_idx, model="iid", hyper=hyper.iid) +
+          # cell ICAR random intercepts
+          f(alpha_i, model="besag", graph=g1, constr=FALSE, scale.model=TRUE,
+            hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01)))) +
+          # random route intercepts
+          f(kappa_k, model="iid", constr=TRUE,
+            hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01))))
+       
+      }else{
+        
+        formula<- ObservationCount ~ -1 + 
+          f(year_idx, model = "rw1") + 
+          # cell ICAR random intercepts
+          f(alpha_i, model="besag", graph=g1, constr=FALSE, scale.model=TRUE,
+            hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01)))) +
+          # random route intercepts
+          f(kappa_k, model="iid", constr=TRUE,
+            hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01))))
+        
+      }
+      
+      M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
+                   control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE), verbose =TRUE), silent = T)
       
       
       
