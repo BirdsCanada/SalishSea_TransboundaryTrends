@@ -2,7 +2,6 @@
 #renv::snapshot()
 
 options(timeout = 1200)
-inla.setOption(scale.model.default=TRUE)
 
 #Create data folder and output folders in working directory
 if(!dir.exists("Data")) dir.create("Data")
@@ -31,7 +30,7 @@ librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredicto
                  exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
                  rnaturalearth, mapview, rnaturalearthhires, INLA, mgcv, sn, fmesher, inlabru, splines, 
                  maps, splancs, spdep, igraph, ggspatial, terra, tidyterra, stringr, reshape2, measurements, ggOceanMaps)
-
+inla.setOption(scale.model.default=TRUE)
 
 BMDE<-meta_bmde_fields("core")
 

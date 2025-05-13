@@ -61,7 +61,7 @@ species<-unique(sp.data$CommonName)
 #view(species)
 
 #Define your `site` as either "SalishSea", "BCCWS" or "PSSS". 
-area <- "BCCWS"
+area <- "SalishSea"
 
 #Create a list of species using all available species in the shared dataset.
 species.list<-"ALL"
@@ -84,8 +84,7 @@ fam<-'nbinomial'
 #fam<-'poisson'
 
 #Priors for the random effects
-prec.prior <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
-hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.05)))
+hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
 
 # SPDE spatial priors
 prior.range = c(20, 0.5)  # 50% probability range >20 km  
@@ -126,7 +125,7 @@ type <-"family"
 #Give your analytically output file a unique name 
 #e.g., BCCWS_Species, SalishSea_guild
 
-name<-"BCCWS_Species"
+name<-"SalishSea_Species"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 source("OutputTables1.R")

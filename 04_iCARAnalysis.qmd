@@ -49,7 +49,6 @@ xy<-st_transform(xy, newCRS) #transform
 Grid <- poly %>% st_filter(xy, .pred = st_intersects)
 
 #add SurveyAreaIdentifier to polygon name
-##this is wrong and needs fixed. 
 loc.xy<- st_join(Grid, xy)
 grid<-loc.xy %>% 
   st_drop_geometry() %>% 
@@ -111,8 +110,7 @@ fam<-'nbinomial'
 #fam<-'poisson'
 
 #Priors for the random effects
-prec.prior <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
-hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.05)))
+hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
 
 ```
 

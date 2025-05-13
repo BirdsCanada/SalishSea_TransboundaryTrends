@@ -138,6 +138,12 @@ for(i in 1:length(sp.list)){
     # Filter the main dataset
     dat <- subset(dat, SurveyAreaIdentifier %in% sites_to_keep)    
     
+    #Remove SurveyAreaIdentifier from the data on where the sum of ObersevationCount is 0 across all years
+    #If a species was never detected on a route, we will not include that route in the species specific analysis
+    #This is considered out of range or in unsuitable habitat
+    dat<-dat %>% group_by(SurveyAreaIdentifier) %>% filter(sum(ObservationCount)>0) %>% ungroup()
+    routes<-n_distinct(dat$SurveyAreaIdentifier)
+    
     #Minimum Data Requirements##
     
     #Now we will check that the minimum data requirements are met. 
@@ -147,7 +153,7 @@ for(i in 1:length(sp.list)){
     
     SpeciesMean<- dat %>% group_by(wyear) %>% summarize(YearMean = sum(ObservationCount)) %>% ungroup() %>% summarize(MeanMean = mean(YearMean))
     SpeciesMean$NumYears <- n_distinct(dat$wyear)
-    
+   
     #Now cheek the SpeciesMean object to see if the species meets the minimum data requirements 
     #all the variable must be large than the values min.abundance, min.years, zero.count, if TRUE continue with the analysis
     
@@ -170,6 +176,7 @@ for(i in 1:length(sp.list)){
       #Create index variables
       dat <- dat %>% mutate( 
         std_yr = wyear - Y2,
+        alpha_i = as.integer(factor(dat$Name)),
         protocol = factor(ProjectCode), 
         kappa = as.integer(factor(dat$SurveyAreaIdentifier)),
         year_idx = as.integer(wyear - mean_wyear), #intercept is the expected count during the most recent year of data collection. 
@@ -183,39 +190,38 @@ for(i in 1:length(sp.list)){
         slice_max(ObservationCount, n = 1, with_ties = FALSE) %>%
         ungroup()
       
-      #Model Formular
-      f1 <- ObservationCount ~ -1 + 
-        
+      #Model Formula
       
       if(guild=="Yes"){
         
         dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
         
         formula<- ObservationCount ~ -1 + 
-          f(year_idx, model = "rw1") + 
+          f(year_idx, model = "iid", hyper = hyper.iid) + 
           f(sp_idx, model="iid", hyper=hyper.iid) +
           # cell ICAR random intercepts
-          f(alpha_i, model="besag", graph=g1, constr=FALSE, scale.model=TRUE,
-            hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01)))) +
+          f(alpha_i, model="besag", graph=g1, constr=FALSE, scale.model=TRUE, hyper = hyper.iid) +
           # random route intercepts
-          f(kappa_k, model="iid", constr=TRUE,
-            hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01))))
+          f(kappa, model = "iid", hyper = hyper.iid,)
        
       }else{
         
         formula<- ObservationCount ~ -1 + 
-          f(year_idx, model = "rw1") + 
+          f(year_idx, model = "iid", hyper = hyper.iid) + 
           # cell ICAR random intercepts
-          f(alpha_i, model="besag", graph=g1, constr=FALSE, scale.model=TRUE,
-            hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01)))) +
+          f(alpha_i, model="besag", graph=g1, constr=FALSE, scale.model=TRUE, hyper = hyper.iid) +
           # random route intercepts
-          f(kappa_k, model="iid", constr=TRUE,
-            hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01))))
+          f(kappa, model="iid", hyper = hyper.iid)
         
       }
       
       M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
                    control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE), verbose =TRUE), silent = T)
+  
+      ##Remove polygons with no survey sites
+      cells_with_counts <- unique(dat$alpha_i[which(!is.na(dat$ObservationCount))]) 
+      
+      
       
       
       

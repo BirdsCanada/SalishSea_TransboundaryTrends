@@ -137,7 +137,6 @@ This part of the code also creates and events martix for each program. This is w
 -   ObservationCount3 for BCCWS to match
 -   Sampling events matrix
 
-
 ```{r}
 
 #Manually specify the start and end year of the analysis

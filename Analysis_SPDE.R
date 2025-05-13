@@ -16,7 +16,6 @@ if(area=="BCCWS"){
 
   sp.dat<-sp.data %>% filter(ProjectCode=="BCCWS")
   event<-events %>% filter(ProjectCode=="BCCWS")
-  map<- st_read("Data/Spatial/BC_Water_Polygon.shp")
   
 }  
 
@@ -24,7 +23,6 @@ if(area=="PSSS"){
   
   sp.dat<-sp.data %>% filter(ProjectCode=="PSSS")
   event<-events %>% filter(ProjectCode=="PSSS")
-  map<- st_read("Data/Spatial/WA_Water_Polygon.shp")
   
   #This is fixed in the data cleaning script and can be removed during next round. 
   event<-event %>% filter(DurationInHours<=3)
@@ -36,9 +34,10 @@ if(area=="SalishSea"){
   
   sp.dat<-sp.data 
   event<-events
-  map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
-
+  
 }
+
+map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
 
 ##remove COVID data 
 sp.dat<-sp.dat %>% filter(wyear != 2020)
@@ -137,12 +136,7 @@ if(nrow(dat)>0){
     dat<-dat %>% group_by(SurveyAreaIdentifier) %>% filter(sum(ObservationCount)>0) %>% ungroup()
     routes<-n_distinct(dat$SurveyAreaIdentifier)
     
-    # # create date and day of year columns
-    # dat$date <- as.Date(paste(dat$YearCollected, dat$MonthCollected, 
-    #                           dat$DayCollected, sep = "-"))
-    # dat$doy <- as.numeric(format(dat$date, "%j"))
-    # 
-#Minimum Data Requirements##
+ #Minimum Data Requirements##
     
     #Now we will check that the minimum data requirements are met. 
     #We will want to ensure that the species was detected a minimum of X times in a year
@@ -197,20 +191,20 @@ if(min.data==TRUE){
      dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
      
      formula<- ObservationCount ~ -1 + 
-       f(year_idx, model = "rw1") + 
+       f(year_idx, model = "iid", hyper = hyper.iid) +  
        f(kappa, model="iid", hyper=hyper.iid) +  #in the spatial model we remove site as the variation will be captured in the spatial component. 
        f(sp_idx, model="iid", hyper=hyper.iid) 
-       #f(protocol, model = "iid", hyper = prec.prior)
-       #f(wmonth_idx, model = "ar1", hyper=prec.prior) 
+       #f(protocol, model = "iid", hyper = hyper.iid)
+       #f(wmonth_idx, model = "ar1", hyper=hyper.iid) 
        #f(wmonth_idx, model = "seasonal", season.length = 7) #Represent within-sampled-period seasonality
      
    }else{
     
      formula<- ObservationCount ~ -1 + 
-      f(year_idx, model = "rw1") +  
+      f(year_idx, model = "iid", hyper = hyper.iid) +  
       f(kappa, model="iid", hyper=hyper.iid)
-      #f(protocol, model = "iid", hyper = prec.prior)
-      #f(wmonth_idx, model = "ar1", hyper=prec.prior) 
+      #f(protocol, model = "iid", hyper = hyper.iid)
+      #f(wmonth_idx, model = "ar1", hyper=hyper.iid) 
       #f(wmonth_idx, model = "seasonal", season.length = 7) #Represent within-sampled-period seasonality
 
    }
@@ -367,26 +361,26 @@ N<-nrow(dat)
     if(guild=="Yes"){
       
       formula.sp<- count ~ -1 + Intercept + 
-      f(year_idx, model = "rw1") +  
-      #f(protocol, model = "iid", hyper = prec.prior) +
+      f(year_idx, model = "iid", hyper = hyper.iid) +  
+      #f(protocol, model = "iid", hyper = hyper.iid) +
       #wmonth_idx +
       #f(year_idx, model="iid", hyper=hyper.iid) + #so that alpha can be calculated per year
-      f(kappa, model="iid", hyper=prec.prior) + #site effect replaced with spatail 
+      f(kappa, model="iid", hyper=hyper.iid) + #site effect replaced with spatail 
       f(sp_idx, model="iid", hyper=hyper.iid) + 
       #f(wmonth_idx, model = "rw1", cyclic=TRUE) +
       #f(wmonth_idx, model = "seasonal", season.length = 7) +
-      #f(wmonth_idx, model="iid", hyper=prec.prior)+
+      #f(wmonth_idx, model="iid", hyper=hyper.iid)+
       f(alpha, model =spde)
       #f(tau, model =spde)
     
       }else{
     
      formula.sp<- count ~ -1+ Intercept + 
-      f(year_idx, model = "rw1") + 
-      #f(protocol, model = "iid", hyper = prec.prior)+
+       f(year_idx, model = "iid", hyper = hyper.iid) + 
+      #f(protocol, model = "iid", hyper = hyper.iid)+
       #wmonth_idx +
       #f(year_idx, model="iid", hyper=hyper.iid) +
-      f(kappa, model="iid", hyper=prec.prior) + #site effect replaced with spatial
+      f(kappa, model="iid", hyper=hyper.iid) + #site effect replaced with spatial
       #f(wmonth_idx, model = "rw1", cyclic = TRUE) +
       #f(wmonth_idx, model = "seasonal", season.length = 7) + #Represent within-sampled-period seasonality
       f(alpha, model =spde) 
@@ -995,123 +989,123 @@ y2 <- nyears
   # ##https://inla.r-inla-download.org/r-inla.org/doc/vignettes/svc.html
   # 
   # 
-  # if(area=="SalishSea"){ #only make map if full Salish Sea Analysis
-  # # get easting and northing limits
-  # xlim <- range( boundary_segment$loc[, 1])
-  # ylim <- range( boundary_segment$loc[, 2])
-  # grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 5) #5 km mapping grid
-  # 
-  # # make mesh projector to get model summaries from the mesh to the mapping grid
-  # mesh_proj <- inla.mesh.projector(
-  #   mesh2,
-  #   xlim = xlim, ylim = ylim, dims = grd_dims)
-  # 
-  #   # pull data
-  #   # kappa <- data.frame(
-  #   #   median = exp(M1$summary.random$kappa$"0.5quant"),
-  #   #   range95 = exp(M1$summary.random$kappa$"0.975quant") -
-  #   #     exp(M1$summary.random$kappa$"0.025quant")
-  #   # )
-  #   # 
-  #   if(guild=="Yes"){
-  #   sp_idx <- data.frame(
-  #     median = exp(M1$summary.random$sp_idx$"0.5quant"),
-  #     range95 = exp(M1$summary.random$sp_idx$"0.975quant") -
-  #       exp(M1$summary.random$sp_idx$"0.025quant")
-  #   )
-  #   }
-  # 
-  #    alph <- data.frame(
-  #     median = exp(M1$summary.random$alpha$"0.5quant"),
-  #     range95 = exp(M1$summary.random$alpha$"0.975quant") -
-  #       exp(M1$summary.random$alpha$"0.025quant")
-  #   )
-  # 
-  #   # taus <- data.frame(
-  #   #   median = (exp(M1$summary.random$tau$"0.5quant") - 1) * 100,
-  #   #   range95 = (exp(M1$summary.random$tau$"0.975quant") -
-  #   #                exp(M1$summary.random$tau$"0.025quant")) * 100
-  #   # )
-  # 
-  #   # loop to get estimates on a mapping grid
-  #   pred_grids <- lapply(
-  #     list(alpha = alph), # tau = taus),
-  #     function(x) as.matrix(inla.mesh.project(mesh_proj, x))
-  #   )
-  # 
-  #   # make a terra raster stack with the posterior median and range95
-  #   out_stk<-NULL
-  #   out_stk <- rast()
-  #   for (j in 1:1) {
-  #     mean_j <- cbind(expand.grid(x = mesh_proj$x, y = mesh_proj$y),
-  #                     Z = c(matrix(pred_grids[[j]][, 1], grd_dims[1]))
-  #     )
-  #     mean_j <- rast(mean_j, crs = epsg6703km)
-  #     range95_j <- cbind(expand.grid(X = mesh_proj$x, Y = mesh_proj$y),
-  #                        Z = c(matrix(pred_grids[[j]][, 2], grd_dims[1]))
-  #     )
-  #     range95_j <- rast(range95_j, crs = epsg6703km)
-  #     out_j <- c(mean_j, range95_j)
-  #     terra::add(out_stk) <- out_j
-  #   }
-  #   
-  #   names(out_stk) <- c("alpha_median", "alpha_range95") #, "tau_median", "tau_range95")
-  #   map<-st_transform(map, crs = epsg6703km)
-  #   out_stk <- terra::mask(out_stk, map, touches = FALSE)
-  # 
-  #   # #change the crs of map to epsg6703km
-  #   # map <- st_transform(map, crs = epsg6703km)
-  #   # out_stk <- terra::mask(out_stk, map, touches = FALSE)
-  #   # 
-  #   # medians
-  #   # fields alpha_s, tau_s
-  #   pa <- make_plot_field(
-  #     data_stk = out_stk[["alpha_median"]],
-  #     scale_label = "posterior\nmedian\nalpha"
-  #   )
-  #   
-  #   # pt <- make_plot_field(
-  #   #   data_stk = out_stk[["tau_median"]],
-  #   #   scale_label = "posterior\nmedian\ntau"
-  #   # )
-  #   # # sites kappa_s
-  #   # ps <- make_plot_site(
-  #   #   data = cbind(site_map, data.frame(value = kappa$median)),
-  #   #   scale_label = "posterior\nmedian\nkappa"
-  #   # )
-  #  
-  #    # range95
-  #   # fields alpha_s, tau_s
-  #   pa_range95 <- make_plot_field(
-  #     data_stk = out_stk[["alpha_range95"]],
-  #     scale_label = "posterior\nrange95\nexp(alpha_s)"
-  #   )
-  #   
-  #   # pt_range95 <- make_plot_field(
-  #   #   data_stk = out_stk[["tau_range95"]],
-  #   #   scale_label = "posterior\nrange95\n100(exp(tau_s)-1)"
-  #   # )
-  #   # 
-  #   # # sites kappa_s
-  #   # ps_range95 <- make_plot_site(
-  #   #   data = cbind(site_map, data.frame(value = kappa$range95)),
-  #   #   scale_label = "posterior\nrange95\nexp(kappa_s)"
-  #   #)
-  #   
-  #   # plot together
-  #   #multiplot(pa, pt, cols = 2)
-  #   
-  #   # plot together
-  #   multiplot(pa, pa_range95, cols = 2)
-  #   
-  #   # plot together
-  #   # multiplot(ps, pa, pt, ps_range95, pa_range95, pt_range95, cols = 2)
-  #   
-  #   pdf(paste(plot.dir, species_name, "_spdePlot.pdf", sep=""))
-  #   multiplot(pa, pt, pa_range95, pt_range95, cols=2)
-  #   while(!is.null(dev.list())) dev.off()
-  #  
-  #   } # end if Salish Sea create map
+  if(area=="SalishSea"){ #only make map if full Salish Sea Analysis
+  # get easting and northing limits
+  xlim <- range( boundary_segment$loc[, 1])
+  ylim <- range( boundary_segment$loc[, 2])
+  grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 5) #5 km mapping grid
+
+  # make mesh projector to get model summaries from the mesh to the mapping grid
+  mesh_proj <- inla.mesh.projector(
+    mesh2,
+    xlim = xlim, ylim = ylim, dims = grd_dims)
+
+    # pull data
+    # kappa <- data.frame(
+    #   median = exp(M1$summary.random$kappa$"0.5quant"),
+    #   range95 = exp(M1$summary.random$kappa$"0.975quant") -
+    #     exp(M1$summary.random$kappa$"0.025quant")
+    # )
+    #
+    if(guild=="Yes"){
+    sp_idx <- data.frame(
+      median = exp(M1$summary.random$sp_idx$"0.5quant"),
+      range95 = exp(M1$summary.random$sp_idx$"0.975quant") -
+        exp(M1$summary.random$sp_idx$"0.025quant")
+    )
+    }
+
+     alph <- data.frame(
+      median = exp(M1$summary.random$alpha$"0.5quant"),
+      range95 = exp(M1$summary.random$alpha$"0.975quant") -
+        exp(M1$summary.random$alpha$"0.025quant")
+    )
+
+    # taus <- data.frame(
+    #   median = (exp(M1$summary.random$tau$"0.5quant") - 1) * 100,
+    #   range95 = (exp(M1$summary.random$tau$"0.975quant") -
+    #                exp(M1$summary.random$tau$"0.025quant")) * 100
+    # )
+
+    # loop to get estimates on a mapping grid
+    pred_grids <- lapply(
+      list(alpha = alph), # tau = taus),
+      function(x) as.matrix(inla.mesh.project(mesh_proj, x))
+    )
+
+    # make a terra raster stack with the posterior median and range95
+    out_stk<-NULL
+    out_stk <- rast()
+    for (j in 1:1) {
+      mean_j <- cbind(expand.grid(x = mesh_proj$x, y = mesh_proj$y),
+                      Z = c(matrix(pred_grids[[j]][, 1], grd_dims[1]))
+      )
+      mean_j <- rast(mean_j, crs = epsg6703km)
+      range95_j <- cbind(expand.grid(X = mesh_proj$x, Y = mesh_proj$y),
+                         Z = c(matrix(pred_grids[[j]][, 2], grd_dims[1]))
+      )
+      range95_j <- rast(range95_j, crs = epsg6703km)
+      out_j <- c(mean_j, range95_j)
+      terra::add(out_stk) <- out_j
+    }
+
+    names(out_stk) <- c("alpha_median", "alpha_range95") #, "tau_median", "tau_range95")
+    map<-st_transform(map, crs = epsg6703km)
+    out_stk <- terra::mask(out_stk, map, touches = FALSE)
+
+    # #change the crs of map to epsg6703km
+    # map <- st_transform(map, crs = epsg6703km)
+    # out_stk <- terra::mask(out_stk, map, touches = FALSE)
+    #
+    # medians
+    # fields alpha_s, tau_s
+    pa <- make_plot_field(
+      data_stk = out_stk[["alpha_median"]],
+      scale_label = "posterior\nmedian\nalpha"
+    )
+
+    # pt <- make_plot_field(
+    #   data_stk = out_stk[["tau_median"]],
+    #   scale_label = "posterior\nmedian\ntau"
+    # )
+    # # sites kappa_s
+    # ps <- make_plot_site(
+    #   data = cbind(site_map, data.frame(value = kappa$median)),
+    #   scale_label = "posterior\nmedian\nkappa"
+    # )
+
+     # range95
+    # fields alpha_s, tau_s
+    pa_range95 <- make_plot_field(
+      data_stk = out_stk[["alpha_range95"]],
+      scale_label = "posterior\nrange95\nexp(alpha_s)"
+    )
+
+    # pt_range95 <- make_plot_field(
+    #   data_stk = out_stk[["tau_range95"]],
+    #   scale_label = "posterior\nrange95\n100(exp(tau_s)-1)"
+    # )
+    #
+    # # sites kappa_s
+    # ps_range95 <- make_plot_site(
+    #   data = cbind(site_map, data.frame(value = kappa$range95)),
+    #   scale_label = "posterior\nrange95\nexp(kappa_s)"
+    #)
+
+    # plot together
+    #multiplot(pa, pt, cols = 2)
+
+    # plot together
+   
+    # plot together
+    # multiplot(ps, pa, pt, ps_range95, pa_range95, pt_range95, cols = 2)
+
+    pdf(paste(plot.dir, species_name, "_spdePlot.pdf", sep=""))
+    multiplot(pa, pa_range95, cols = 2)
+    #multiplot(pa, pt, pa_range95, pt_range95, cols=2)
+    while(!is.null(dev.list())) dev.off()
+
+    } # end if Salish Sea create map
   } #end nrow data 
   } #end min.data  
   } #end SpeciesLoop
