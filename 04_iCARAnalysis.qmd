@@ -27,39 +27,55 @@ events<-read.csv("Data/events.csv")
 
 ## 4.1 Spatial Data {#4.1iCAR}
 
-Here the user will upload the desired spatial polygon for the analysis. We will use as our example the Watersheds in the Salish Sea Bioregion layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/). Sample code is also given for loading 
+Here the user will upload the desired spatial polygon for the analysis. We will use as our example the Watersheds in the Salish Sea Bioregion layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/). Sample code is also given for loading a geodatabase. 
 
+A polygon should have counts in all years to ensure that sampling is complete and consistent. Those that have incomplete time series are removed. 
 
 ```{r spatial}
 
-#load your .shp file saved in the Data/Sptail folder
+#Load your .shp file saved in the Data/Sptail folder
 poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp")
 
-#load your 
+#Load your geodatabase
 #poly <- st_layers("Data/Spatial/SpatialData.gdb")
 
+#create your point layer
 loc<-events %>% select(SurveyAreaIdentifier, DecimalLatitude, DecimalLongitude) %>% distinct()
-
 xy<-st_as_sf(loc, coords = c("DecimalLongitude", "DecimalLatitude"))
 st_crs(xy)<-"+proj=longlat +datum=NAD83"
 
-#sf point
+#ensure the coordinate reference systems are the same
 newCRS<-st_crs(poly) #get the CRS of the poly data
 xy<-st_transform(xy, newCRS) #transform 
 Grid <- poly %>% st_filter(xy, .pred = st_intersects)
-
-#add SurveyAreaIdentifier to polygon name
+Grid$Name[15]<-"Central Vancover Island" #rename one of the polygons as it is duplicated 
+#Add SurveyAreaIdentifier to polygon name
 loc.xy<- st_join(Grid, xy)
+
+#Visualize your points and polygons before proceeding
+ggplot() +
+  geom_sf(data = Grid, aes(fill = Name), color = "black") +
+  geom_sf(data = xy, color = "black", size = 2) +
+  theme_minimal()
+
 grid<-loc.xy %>% 
   st_drop_geometry() %>% 
-  select(SurveyAreaIdentifier, Name) %>%
-  distinct() #select the name associated with your polygon
+  select(SurveyAreaIdentifier, Name) %>% #select the name and/or ID associated with your polygon. 
+  distinct() %>% 
+  #create the alpha index for the analysis 
+  mutate(alpha_i = as.integer(factor(Name)))
 
 #joint to your events layer
-events<-left_join(events, grid, by="SurveyAreaIdentifier")
-
+events<-left_join(events, grid, by="SurveyAreaIdentifier") %>% st_drop_geometry()
 #remove the areas that fall outside the polygons
 events<-events %>% drop_na(Name)
+
+#Finally, set up the grid key which you will use later to align alpha_id back with your polygon names and/or ID. 
+
+#may not needs this afterall
+grid_key<-unique(events[, c("Name", "alpha_i")])
+grid_name<-Grid %>% select(Name)
+grid_key <-left_join(grid_key, grid_name, by=c("Name")) #include the geometry
 
 ```
 
@@ -147,13 +163,13 @@ type <-"family"
 #Give your analytically output file a unique name 
 #e.g., BCCWS_Species, SalishSea_guild
 
-name<-"PSSSS_Species"
+name<-"SalishSea_Species"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
-source("OutputTables1.R")
+source("OutputTables2.R")
 
 #Now we can initiate the analysis.  
-source("Analysis.R")
+source("Analysis_iCAR.R")
 
 #Plot the results to a pdf for inspection. 
 #You will find the outputs in your Output/Plot folder

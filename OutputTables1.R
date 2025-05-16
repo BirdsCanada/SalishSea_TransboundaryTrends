@@ -9,7 +9,7 @@ names(indices.csv) <- c("results_code", "version", "area_code", "season", "perio
 
 
 write.table(indices.csv, file = paste(out.dir, 
-                                      name, "_AnnualIndices.csv", sep = ""), 
+                                      name, "_AnnualIndices_SPDE.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 
@@ -21,7 +21,7 @@ names(trends.csv) <- c("results_code",	"version",	"area_code",	"season",	"period
 
 #Endpoint Trends
 write.table(trends.csv, file = paste(out.dir, 
-                                     name, "_TrendsEndpoint.csv", sep = ""), 
+                                     name, "_TrendsEndpoint_SPDE.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
 # #Slope Trends

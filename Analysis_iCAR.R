@@ -169,7 +169,6 @@ for(i in 1:length(sp.list)){
     if(min.data==TRUE){
       
       #Prepare the parameters
-      
       wyears <- unique(dat$wyear)
       mean_wyear <- max(wyears)
       
@@ -190,8 +189,24 @@ for(i in 1:length(sp.list)){
         slice_max(ObservationCount, n = 1, with_ties = FALSE) %>%
         ungroup()
       
-      #Model Formula
+      #Calucalte sample size per polygon alpha_i
+      sample_size<-dat %>% group_by(alpha_i) %>% summarise(sample_size=n_distinct(SurveyAreaIdentifier))
       
+      # Last, remove alpha_i with incomplete sampling over all years. 
+      # Indicates that the polygon is not well sampled for a given species and end point trend may not work
+      period_num = Y2-Y1 
+      
+       complete_sites <- dat %>%
+        group_by(alpha_i) %>%
+        summarise(has_all_years = n_distinct(wyear)) %>%
+        filter(has_all_years == period_num) %>%
+        select(alpha_i)
+      
+      # Filter original data frame to keep only complete sites
+      dat <- dat %>%
+        filter(alpha_i %in% complete_sites$alpha_i)
+      
+      #Model Formula
       if(guild=="Yes"){
         
         dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
@@ -215,16 +230,238 @@ for(i in 1:length(sp.list)){
         
       }
       
-      M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
-                   control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE), verbose =TRUE), silent = T)
+      M2<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
+                   control.predictor = list(compute = TRUE),
+                   control.compute = list(
+                     dic = TRUE,                # For model comparison
+                     waic = TRUE,               # For model comparison
+                     config = TRUE,             # Enable posterior sampling
+                     cpo = TRUE                 # Optional: cross-validated PIT
+                   ),
+                   control.fixed = list(
+                     mean = 0,                  # Prior mean for fixed effects
+                     prec = 0.001               # Prior precision for fixed effects
+                   ), 
+                   control.family = list(
+                     hyper = list(theta = list(prior = "loggamma", param = c(3, 0.1)))
+                   ),
+                   verbose = TRUE
+      ))
   
       ##Remove polygons with no survey sites
       cells_with_counts <- unique(dat$alpha_i[which(!is.na(dat$ObservationCount))]) 
+      grid2<-grid_key[grid_key$alpha_i %in% cells_with_counts, ]
+   
+      #posterior sample 
+      posterior_ss <- 100 # change as appropriate
+      samp1 <- inla.posterior.sample(posterior_ss, M2)
+      par_names <- as.character(attr(samp1[[1]]$latent, "dimnames")[[1]])
+      post1 <- as.data.frame(sapply(samp1, function(x) x$latent))
+      post1$par_names <- par_names
+      
+      #alph samples
+      alpha_samps1 <- post1[grep("alpha_i", post1$par_names), ]
+      row.names(alpha_samps1) <- NULL
+      alpha_samps1 <- alpha_samps1[cells_with_counts, 1:posterior_ss]
+      alpha_samps1 <- exp(alpha_samps1) 
+      alpha_samps2 <- cbind(grid2, alpha_samps1)
+      row.names(alpha_samps2) <- NULL
+      val_names <- grep("V", names(alpha_samps2))
+
+      
+      #Calculate Posterior estimate of abundance
+      nsamples<- 100
+      post.sample1 <-NULL #clear previous
+      post.sample1<-inla.posterior.sample(nsamples, M2)
+      
+      tmp1<-NULL
+      tmp1 <- dat %>% dplyr::select(wyear, alpha_i) %>% st_drop_geometry() 
+      
+      #for each sample in the posterior we want to join the predicted to tmp so that the predictions line up with year and we can get the mean count by year
+      for (h in 1:nsamples){
+        pred<-exp(post.sample1[[h]]$latent[1:nrow(dat)])
+        tmp1[ncol(tmp1)+1]<-pred
+      }
+      
+      # Rename the columns from V3 to V101
+      colnames(tmp1)[3:(nsamples + 2)] <- paste0("V", 3:(nsamples + 2))
+      
+      #will want to adjust V to match the posterior sample size   
+      tmp1<-tmp1 %>% group_by(wyear, alpha_i) %>% summarise_all(mean, na.rm=TRUE)
+      tmp1<-tmp1 %>% rowwise() %>% mutate(index = median(c_across(V3:V102)), 
+                                          lower_ci=quantile(c_across(V3:V101), 0.025), 
+                                          upper_ci=quantile(c_across(V3:V101), 0.975), 
+                                          stdev=sd(c_across(V3:V101)), 
+                                          stderr = stdev / sqrt(100))  
+      
+      #link back this the site name using the grid_key
+      grid3<-grid %>% st_drop_geometry() %>% 
+        select(alpha_i, Name) %>% 
+        mutate(area_code = Name) %>% 
+        distinct()
+      
+      tmp1<-left_join(tmp1, grid3, by="alpha_i")
+      
+      #Assign data to output table 
+      indices.csv<-tmp1 %>% dplyr::select(wyear, index, lower_ci, upper_ci, stdev, stderr, area_code) %>% mutate(
+        species_code = sp.code,
+        years = paste(min(dat$wyear), "-", max(dat$wyear), sep = ""),
+        year = wyear,
+        period ="all years",
+        season = "winter",
+        model_type = "iCAR ALPHA SPATIAL",
+        species_id=sp.id,
+        species_name=species_name,
+        species_sci_name=species_sci_name,
+        error="",
+        #Assing missing data fields 
+        upload_id="",
+        stderr="",
+        trend_id="",
+        smooth_upper_ci="",
+        smooth_lower_ci="",
+        upload_dt="",
+        family=fam,
+        results_code = "BCCWS/PSSS",
+        version = Sys.Date(),
+        season="Winter",
+        trend_index="")
+      
+      # Run LOESS function
+      indices.csv$LOESS_index = loess_func(indices.csv$index, indices.csv$wyear)
+      
+      # Order output before printing to table
+      indices.csv<-indices.csv %>% ungroup %>% dplyr::select(results_code, version, area_code, season, period, species_code, species_id, year, index, stderr, stdev, upper_ci, lower_ci, LOESS_index, trend_index)
+     
+      # Write data to table
+      write.table(indices.csv, 
+                  file = paste(out.dir,	name, "_AnnualIndices_iCAR.csv", sep = ""),
+                  row.names = FALSE, 
+                  append = TRUE, 
+                  quote = FALSE, 
+                  sep = ",", 
+                  col.names = FALSE)
       
       
+      ##############################################################################
+      ##END POINT TRENDS for each site based on simulated data
+      
+      tmp2<-tmp1 %>% select(-index, -upper_ci, -lower_ci, -stdev) %>% filter(wyear==Y1 | wyear==Y2)
+     
+      tmp2 <- tmp2 %>%
+          pivot_longer(
+          cols = V3:V102,
+          names_to = "simulation",
+          values_to = "abundance"
+        )
+      
+      tmp2 <- tmp2 %>%
+        pivot_wider(
+          id_cols = c(alpha_i, simulation),
+          names_from = wyear,
+          values_from = abundance
+        )
+      
+      y1_col <- as.character(Y1)
+      y2_col <- as.character(Y2)
+      
+      df_trends <- tmp2 %>%
+        mutate(
+          trend = 100 * (
+            (!!sym(y2_col) / !!sym(y1_col))^(1 / (Y2 - Y1)) - 1
+          ))
+      
+      df_trends <- df_trends %>%
+        group_by(alpha_i) %>%
+        summarise(
+          trnd = mean(trend, na.rm = TRUE),
+          lower_ci = quantile(trend, 0.025, na.rm = TRUE),
+          upper_ci = quantile(trend, 0.975, na.rm = TRUE),
+          stdev = sd(trend, na.rm=TRUE),
+          stderr = sd(trend, na.rm = TRUE) / sqrt(n())) %>% 
+        mutate(
+          Width_of_Credible_Interval = upper_ci-lower_ci, 
+          per_trend = trnd/100, 
+          percent_change = ((1+per_trend)^period_num-1)*100,
+          )
+      
+      #link back this the site name using the grid_key
+      df_trends<-left_join(df_trends, grid3, by="alpha_i")
+      
+      #write output to table   
+      trend.out<-NULL
+      trend.out <- df_trends %>%
+        mutate(model_type="iCAR ALPHA SPATIAL", 
+               model_family = fam,
+               years = paste(Y1, "-", Y2, sep = ""),
+               year_start=Y1, 
+               year_end=Y2,
+               period ="all years",
+               season = "winter",
+               results_code = "BCCWS/PSSS",
+               version=Sys.Date(), 
+               area_code=df_trends$area_code,
+               species_code = sp.code,
+               species_id=sp.id, 
+               species_name=species_name,
+               species_sci_name=species_sci_name,
+               index_type= "Endpoint trend", 
+               model_fit = "", 	
+               percent_change_low ="", 
+               percent_change_high = "",
+               prob_decrease_0 = "",
+               prob_decrease_25 = "",
+               prob_decrease_30 = "",
+               prob_decrease_50 = "",
+               prob_increase_0 = "",
+               prob_increase_33 = "",	
+               prob_increase_100 = "",
+               confidence = "",
+               precision_num = "",
+               suitability="",
+               precision_cat = ifelse(df_trends$Width_of_Credible_Interval<3.5, "High", ifelse(df_trends$Width_of_Credible_Interval>=3.5 & df_trends$Width_of_Credible_Interval<=6.7, "Medium", "Low")),
+               coverage_num = "",
+               coverage_cat = "",
+               goal = "",
+               goal_lower = "",
+               #sample_size = sample_size,
+               sample_size_units="Number of Sites",
+               sample_total = "",
+               subtitle = "",
+               pval = "",
+               pval_str = "",
+               post_prob = "",
+               trnd_order = "",
+               dq = "",
+               prob_LD = "",
+               prob_MD = "",
+               prob_LC = "",
+               prob_MI = "",
+               prob_LI = "",
+               quantile_050 = "",
+               quantile_165 = "",
+               quantile_835 = "",
+               quantile_950 = "",
+               trend_id = "",
+               upload_dt = "")
+      
+      trend.out<-left_join(trend.out, sample_size, by="alpha_i")
+      
+      write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
+      
+      write.table(write.trend, 
+                  file = paste(out.dir, name, "_TrendsEndpoint_iCAR.csv", sep = ""), 
+                  row.names = FALSE, 
+                  append = TRUE, 
+                  quote = FALSE, 
+                  sep = ",", 
+                  col.names = FALSE)  
       
       
-      
+      #if the analysis if for the full Salish Sea, create an output maps
+      if(area=="SalishSea"){
+        
+        } #end if SalishSea
       } #end min data
     } #end if nrows = 0
   } #end sp.list

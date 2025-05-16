@@ -457,7 +457,7 @@ year = wyear,
 period ="all years",
 season = "winter",
 area_code = area,
-model_type = "GLM MONTH AR1 ALPHA+TAU SPATIAL",
+model_type = "ALPHA SPATIAL",
 species_id=sp.id,
 species_name=species_name,
 species_sci_name=species_sci_name,
@@ -470,11 +470,11 @@ smooth_upper_ci="",
 smooth_lower_ci="",
 upload_dt="",
 family=fam,
-results_code = "BCCWS+PSSS",
+results_code = "BCCWS/PSSS",
 version = "2025",
 season="Winter",
 area_code=area,
-trend_index="") #look at CMMN code to generate in next round of analysis
+trend_index="") 
 
 # Run LOESS function
 indices.csv$LOESS_index = loess_func(indices.csv$index, indices.csv$wyear)
@@ -484,7 +484,7 @@ indices.csv<-indices.csv %>% dplyr::select(results_code, version, area_code, sea
 
 # Write data to table
 write.table(indices.csv, 
-            file = paste(out.dir,	name, "_AnnualIndices.csv", sep = ""),
+            file = paste(out.dir,	name, "_AnnualIndices_SPDE.csv", sep = ""),
             row.names = FALSE, 
             append = TRUE, 
             quote = FALSE, 
@@ -524,9 +524,9 @@ y2 <- nyears
            year_end=Y2,
            period ="all years",
            season = "winter",
-           results_code = "BCCWS+PSSS",
+           results_code = "BCCWS/PSSS",
            area_code = area,
-           version=2025, 
+           version=Sys.Date(), 
            species_code = sp.code,
            species_id=sp.id, 
            index_type="endpoint", 
@@ -576,7 +576,7 @@ y2 <- nyears
   write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
   
   write.table(write.trend, 
-              file = paste(out.dir, name, "_TrendsEndpoint.csv", sep = ""), 
+              file = paste(out.dir, area, "_TrendsEndpoint_SPDE.csv", sep = ""), 
               row.names = FALSE, 
               append = TRUE, 
               quote = FALSE, 
@@ -619,7 +619,7 @@ y2 <- nyears
 #   
 #   
 #   write.table(write.trend, 
-#               file = paste(out.dir, name, "_TrendsSlope.csv", sep = ""), 
+#               file = paste(out.dir, area, "_TrendsSlope_SPDE.csv", sep = ""), 
 #               row.names = FALSE, 
 #               append = TRUE, 
 #               quote = FALSE, 
@@ -676,12 +676,13 @@ y2 <- nyears
   # Summarize posterior samples
   annual_grid <- annual_grid %>%
     mutate(
-      index = apply(post_samples, 1, mean),
+      index = apply(post_samples, 1, median),
       stdev = apply(post_samples, 1, sd),
+      stderr= apply(post_samples, 1, function(x) sd(x) / sqrt(length(x))),
       lower_ci = apply(post_samples, 1, quantile, probs = 0.025),
       upper_ci = apply(post_samples, 1, quantile, probs = 0.975)
     )
-  
+
   #Assign data to output table 
   indices.csv<-annual_grid %>% dplyr::select(area_code, wyear, index, lower_ci, upper_ci, stdev) %>% mutate(
     species_code = sp.code,
@@ -696,14 +697,13 @@ y2 <- nyears
     error="",
     #Assing missing data fields 
     upload_id="",
-    stderr="",
     trend_id="",
     smooth_upper_ci="",
     smooth_lower_ci="",
     upload_dt="",
     family=fam,
-    results_code = "BCCWS+PSSS",
-    version = "2025",
+    results_code = "BCCWS/PSSS",
+    version = Sys.Date(),
     season="Winter",
     trend_index="") #look at CMMN code to generate in next round of analysis
   
@@ -715,7 +715,7 @@ y2 <- nyears
   
   # Write data to table
   write.table(indices.csv, 
-              file = paste(out.dir,	name, "_AnnualIndices.csv", sep = ""),
+              file = paste(out.dir,	name, "_AnnualIndices_SPDE.csv", sep = ""),
               row.names = FALSE, 
               append = TRUE, 
               quote = FALSE, 
@@ -736,6 +736,8 @@ y2 <- nyears
     tmp1_site[[paste0("V", h+1)]] <- pred
   }
   
+  
+  ###NEEDS FIXED SEE iCAR
   # Calculate annual indices per site
   trends_by_site <- tmp1_site %>%
     group_by(SurveyAreaIdentifier, wyear) %>%
@@ -807,7 +809,7 @@ y2 <- nyears
            goal = "",
            goal_lower = "",
            sample_size = sample_size,
-           sample_size_units="Number of Routes",
+           sample_size_units="Number of Sites",
            sample_total = "",
            subtitle = "",
            pval = "",
@@ -830,7 +832,7 @@ y2 <- nyears
   write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
   
   write.table(write.trend, 
-              file = paste(out.dir, name, "_TrendsEndpoint.csv", sep = ""), 
+              file = paste(out.dir, area, "_TrendsEndpoint_SPDE.csv", sep = ""), 
               row.names = FALSE, 
               append = TRUE, 
               quote = FALSE, 
@@ -925,7 +927,7 @@ y2 <- nyears
   #          year_end=Y2,
   #          period ="all years",
   #          season = "winter",
-  #          results_code = "BCCWS+PSSS",
+  #          results_code = "BCCWS/PSSS",
   #          version=2025, 
   #          species_code = sp.code,
   #          species_id=sp.id, 
@@ -952,7 +954,7 @@ y2 <- nyears
   #          goal = "",
   #          goal_lower = "",
   #          sample_size = sample_size,
-  #          sample_size_units="Number of Routes",
+  #          sample_size_units="Number of Sites",
   #          sample_total = "",
   #          subtitle = "",
   #          pval = "",
