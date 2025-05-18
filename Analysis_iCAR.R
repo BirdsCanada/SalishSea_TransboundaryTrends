@@ -248,6 +248,35 @@ for(i in 1:length(sp.list)){
                    verbose = TRUE
       ))
   
+      #Dispersion Statistic
+      mu1<-M2$summary.fitted.values[,"mean"]
+      E1<-(dat$ObservationCount-mu1)/ sqrt(mu1 + mu1^2) #Pearson residuals
+      N<-nrow(dat)
+      p<-nrow(M0$summary.fixed + 2) # +1 for each the idd random effect
+      Dispersion1<-sum(E1^2)/(N-p)
+      print(paste("Dispersions Statistic out1 = ", Dispersion1, sep = ""))
+      
+      #write the dispersion statistic to the output file
+      dispersion.csv$area_code<-area
+      dispersion.csv$SpeciesCode<-sp.list[i]
+      dispersion.csv$dispersion<-Dispersion1
+      
+      write.table(dispersion.csv, file = paste(out.dir,  name, "_DispersionStat_iCAR.csv", sep = ""),
+                  col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
+      dat$mu1<-mu1
+      
+      #plot ObservationCount and mu1 using ggplot, with 1:1 line
+      q <- ggplot(dat, aes(x = ObservationCount, y = mu1)) + 
+        geom_point() + 
+        geom_abline(intercept = 0, slope = 1)
+      
+      # Save the plot with specified width, height, and dpi
+      ggsave(filename = paste(plot.dir, area, sp.list[i], "_FitPlot_iCAR.jpeg", sep = ""), 
+             plot = q, 
+             width = 8,    # Adjust width as needed
+             height = 6,   # Adjust height as needed
+             dpi = 150)    # Lower dpi for faster saving
+      
       ##Remove polygons with no survey sites
       cells_with_counts <- unique(dat$alpha_i[which(!is.na(dat$ObservationCount))]) 
       grid2<-grid_key[grid_key$alpha_i %in% cells_with_counts, ]

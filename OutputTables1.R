@@ -35,16 +35,7 @@ dispersion.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3, byrow = FA
                                     dimnames = NULL))
 names(dispersion.csv) <- c("area_code", "SpeciesCode", "dispersion")
 
-write.table(dispersion.csv, file = paste(out.dir,  name, "_DispersionStat.csv", sep = ""), 
+write.table(dispersion.csv, file = paste(out.dir,  name, "_DispersionStat_SPDE.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
-
-## Create .csv file for DIC and WIC scores
-
-model.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 4, byrow = FALSE,
-                                       dimnames = NULL))
-names(model.csv) <- c("ModelType", "DIC", "WIC", "SpeciesCode")
-
-write.table(model.csv, file = paste(out.dir,  name, "_ModelComparison.csv", sep = ""), 
-            row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 

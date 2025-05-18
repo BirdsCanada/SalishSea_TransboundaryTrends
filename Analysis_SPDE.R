@@ -226,17 +226,18 @@ if(min.data==TRUE){
     dispersion.csv$SpeciesCode<-sp.list[i]
     dispersion.csv$dispersion<-Dispersion1
     
-    write.table(dispersion.csv, file = paste(out.dir,  name, "_DispersionStat.csv", sep = ""),
+    write.table(dispersion.csv, file = paste(out.dir,  name, "_DispersionStat_SPDE.csv", sep = ""),
                 col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
     
     dat$mu1<-mu1
+    
     #plot ObservationCount and mu1 using ggplot, with 1:1 line
      q <- ggplot(dat, aes(x = ObservationCount, y = mu1)) + 
       geom_point() + 
       geom_abline(intercept = 0, slope = 1)
     
     # Save the plot with specified width, height, and dpi
-    ggsave(filename = paste(plot.dir, area, sp.list[i], "_FitPlot.jpeg", sep = ""), 
+    ggsave(filename = paste(plot.dir, area, sp.list[i], "_FitPlot_SPDE.jpeg", sep = ""), 
            plot = q, 
            width = 8,    # Adjust width as needed
            height = 6,   # Adjust height as needed
@@ -576,55 +577,13 @@ y2 <- nyears
   write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
   
   write.table(write.trend, 
-              file = paste(out.dir, area, "_TrendsEndpoint_SPDE.csv", sep = ""), 
+              file = paste(out.dir, name, "_TrendsEndpoint_SPDE.csv", sep = ""), 
               row.names = FALSE, 
               append = TRUE, 
               quote = FALSE, 
               sep = ",", 
               col.names = FALSE)  
   
-# #SLOPE TRENDS
-# #Summary of the GAM smooth on year
-# wy=c(y1:y2)
-# pred.yr<-tmp1 %>% dplyr::select(-wyear)
-# pred.yr<-t(pred.yr)
-# ne = log(pred.yr[,wy])
-# 
-# #This is the slope function.
-# #It calculates the coefficient of the lm slope for each row in the smoothed output.
-# 
-# #slope function 1
-# slope  <-  function(x){
-#   return(coef(lm(x~I(y1:y2)))[2])
-# }
-# 
-# m =  apply(ne,1,slope)
-# m = as.vector((exp(m)-1)*100)
-#   
-# 
-#   #include slope output in new table
-#   trend.out$index_type="Slope trend"
-#   trend.out$trnd<-median(m, na.rm=TRUE)
-#   trend.out$lower_ci<-quantile(m, prob=0.025)
-#   trend.out$upper_ci<-quantile(m, prob=0.950)
-#   trend.out$sd<-sd(m, na.rm=TRUE)
-# 
-#   per_trend=trend.out$trnd/100
-#   period_num=Y2-Y1
-#   trend.out$percent_change<-((1+per_trend)^period_num-1)*100
-#   trend.out$Width_of_Credible_Interval_slope<-trend.out$upper_ci-trend.out$lower_ci
-#   trend.out$precision_cat = ifelse(pred.ch$Width_of_Credible_Interval<3.5, "High", ifelse(pred.ch$Width_of_Credible_Interval>=3.5 & pred.ch$Width_of_Credible_Interval<=6.7, "Medium", "Low"))
-#   
-#   write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
-#   
-#   
-#   write.table(write.trend, 
-#               file = paste(out.dir, area, "_TrendsSlope_SPDE.csv", sep = ""), 
-#               row.names = FALSE, 
-#               append = TRUE, 
-#               quote = FALSE, 
-#               sep = ",", 
-#               col.names = FALSE)  
 
 ############################################################################################  
 ##Annual site level index
@@ -832,7 +791,7 @@ y2 <- nyears
   write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
   
   write.table(write.trend, 
-              file = paste(out.dir, area, "_TrendsEndpoint_SPDE.csv", sep = ""), 
+              file = paste(out.dir, name, "_TrendsEndpoint_SPDE.csv", sep = ""), 
               row.names = FALSE, 
               append = TRUE, 
               quote = FALSE, 
@@ -991,123 +950,79 @@ y2 <- nyears
   # ##https://inla.r-inla-download.org/r-inla.org/doc/vignettes/svc.html
   # 
   # 
-  if(area=="SalishSea"){ #only make map if full Salish Sea Analysis
-  # get easting and northing limits
-  xlim <- range( boundary_segment$loc[, 1])
-  ylim <- range( boundary_segment$loc[, 2])
-  grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 5) #5 km mapping grid
+  # if(area=="SalishSea"){ #only make map if full Salish Sea Analysis
+  # # get easting and northing limits
+  # xlim <- range( boundary_segment$loc[, 1])
+  # ylim <- range( boundary_segment$loc[, 2])
+  # grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))) / 5) #5 km mapping grid
+  # 
+  # # make mesh projector to get model summaries from the mesh to the mapping grid
+  # mesh_proj <- inla.mesh.projector(
+  #   mesh2,
+  #   xlim = xlim, ylim = ylim, dims = grd_dims)
+  # 
+  #  
+  #   if(guild=="Yes"){
+  #   sp_idx <- data.frame(
+  #     median = exp(M1$summary.random$sp_idx$"0.5quant"),
+  #     range95 = exp(M1$summary.random$sp_idx$"0.975quant") -
+  #       exp(M1$summary.random$sp_idx$"0.025quant")
+  #   )
+  #   }
+  # 
+  #    alph <- data.frame(
+  #     median = exp(M1$summary.random$alpha$"0.5quant"),
+  #     range95 = exp(M1$summary.random$alpha$"0.975quant") -
+  #       exp(M1$summary.random$alpha$"0.025quant")
+  #   )
+  # 
+  #   
+  #   # loop to get estimates on a mapping grid
+  #   pred_grids <- lapply(
+  #     list(alpha = alph), # tau = taus),
+  #     function(x) as.matrix(inla.mesh.project(mesh_proj, x))
+  #   )
+  # 
+  #   # make a terra raster stack with the posterior median and range95
+  #   out_stk<-NULL
+  #   out_stk <- rast()
+  #   for (j in 1:1) {
+  #     mean_j <- cbind(expand.grid(x = mesh_proj$x, y = mesh_proj$y),
+  #                     Z = c(matrix(pred_grids[[j]][, 1], grd_dims[1]))
+  #     )
+  #     mean_j <- rast(mean_j, crs = epsg6703km)
+  #     range95_j <- cbind(expand.grid(X = mesh_proj$x, Y = mesh_proj$y),
+  #                        Z = c(matrix(pred_grids[[j]][, 2], grd_dims[1]))
+  #     )
+  #     range95_j <- rast(range95_j, crs = epsg6703km)
+  #     out_j <- c(mean_j, range95_j)
+  #     terra::add(out_stk) <- out_j
+  #   }
+  # 
+  #   names(out_stk) <- c("alpha_median", "alpha_range95") #, "tau_median", "tau_range95")
+  #   map<-st_transform(map, crs = epsg6703km)
+  #   out_stk <- terra::mask(out_stk, map, touches = FALSE)
+  # 
+  #   
+  #   pa <- make_plot_field(
+  #     data_stk = out_stk[["alpha_median"]],
+  #     scale_label = "posterior\nmedian\nalpha"
+  #   )
+  # 
+  #    # range95
+  #   # fields alpha_s, tau_s
+  #   pa_range95 <- make_plot_field(
+  #     data_stk = out_stk[["alpha_range95"]],
+  #     scale_label = "posterior\nrange95\nexp(alpha_s)"
+  #   )
+  # 
+  #   
+  #   pdf(paste(plot.dir, species_name, "_spdePlot.pdf", sep=""))
+  #   multiplot(pa, pa_range95, cols = 2)
+  #   #multiplot(pa, pt, pa_range95, pt_range95, cols=2)
+  #   while(!is.null(dev.list())) dev.off()
 
-  # make mesh projector to get model summaries from the mesh to the mapping grid
-  mesh_proj <- inla.mesh.projector(
-    mesh2,
-    xlim = xlim, ylim = ylim, dims = grd_dims)
-
-    # pull data
-    # kappa <- data.frame(
-    #   median = exp(M1$summary.random$kappa$"0.5quant"),
-    #   range95 = exp(M1$summary.random$kappa$"0.975quant") -
-    #     exp(M1$summary.random$kappa$"0.025quant")
-    # )
-    #
-    if(guild=="Yes"){
-    sp_idx <- data.frame(
-      median = exp(M1$summary.random$sp_idx$"0.5quant"),
-      range95 = exp(M1$summary.random$sp_idx$"0.975quant") -
-        exp(M1$summary.random$sp_idx$"0.025quant")
-    )
-    }
-
-     alph <- data.frame(
-      median = exp(M1$summary.random$alpha$"0.5quant"),
-      range95 = exp(M1$summary.random$alpha$"0.975quant") -
-        exp(M1$summary.random$alpha$"0.025quant")
-    )
-
-    # taus <- data.frame(
-    #   median = (exp(M1$summary.random$tau$"0.5quant") - 1) * 100,
-    #   range95 = (exp(M1$summary.random$tau$"0.975quant") -
-    #                exp(M1$summary.random$tau$"0.025quant")) * 100
-    # )
-
-    # loop to get estimates on a mapping grid
-    pred_grids <- lapply(
-      list(alpha = alph), # tau = taus),
-      function(x) as.matrix(inla.mesh.project(mesh_proj, x))
-    )
-
-    # make a terra raster stack with the posterior median and range95
-    out_stk<-NULL
-    out_stk <- rast()
-    for (j in 1:1) {
-      mean_j <- cbind(expand.grid(x = mesh_proj$x, y = mesh_proj$y),
-                      Z = c(matrix(pred_grids[[j]][, 1], grd_dims[1]))
-      )
-      mean_j <- rast(mean_j, crs = epsg6703km)
-      range95_j <- cbind(expand.grid(X = mesh_proj$x, Y = mesh_proj$y),
-                         Z = c(matrix(pred_grids[[j]][, 2], grd_dims[1]))
-      )
-      range95_j <- rast(range95_j, crs = epsg6703km)
-      out_j <- c(mean_j, range95_j)
-      terra::add(out_stk) <- out_j
-    }
-
-    names(out_stk) <- c("alpha_median", "alpha_range95") #, "tau_median", "tau_range95")
-    map<-st_transform(map, crs = epsg6703km)
-    out_stk <- terra::mask(out_stk, map, touches = FALSE)
-
-    # #change the crs of map to epsg6703km
-    # map <- st_transform(map, crs = epsg6703km)
-    # out_stk <- terra::mask(out_stk, map, touches = FALSE)
-    #
-    # medians
-    # fields alpha_s, tau_s
-    pa <- make_plot_field(
-      data_stk = out_stk[["alpha_median"]],
-      scale_label = "posterior\nmedian\nalpha"
-    )
-
-    # pt <- make_plot_field(
-    #   data_stk = out_stk[["tau_median"]],
-    #   scale_label = "posterior\nmedian\ntau"
-    # )
-    # # sites kappa_s
-    # ps <- make_plot_site(
-    #   data = cbind(site_map, data.frame(value = kappa$median)),
-    #   scale_label = "posterior\nmedian\nkappa"
-    # )
-
-     # range95
-    # fields alpha_s, tau_s
-    pa_range95 <- make_plot_field(
-      data_stk = out_stk[["alpha_range95"]],
-      scale_label = "posterior\nrange95\nexp(alpha_s)"
-    )
-
-    # pt_range95 <- make_plot_field(
-    #   data_stk = out_stk[["tau_range95"]],
-    #   scale_label = "posterior\nrange95\n100(exp(tau_s)-1)"
-    # )
-    #
-    # # sites kappa_s
-    # ps_range95 <- make_plot_site(
-    #   data = cbind(site_map, data.frame(value = kappa$range95)),
-    #   scale_label = "posterior\nrange95\nexp(kappa_s)"
-    #)
-
-    # plot together
-    #multiplot(pa, pt, cols = 2)
-
-    # plot together
-   
-    # plot together
-    # multiplot(ps, pa, pt, ps_range95, pa_range95, pt_range95, cols = 2)
-
-    pdf(paste(plot.dir, species_name, "_spdePlot.pdf", sep=""))
-    multiplot(pa, pa_range95, cols = 2)
-    #multiplot(pa, pt, pa_range95, pt_range95, cols=2)
-    while(!is.null(dev.list())) dev.off()
-
-    } # end if Salish Sea create map
+    # } # end if Salish Sea create map
   } #end nrow data 
   } #end min.data  
   } #end SpeciesLoop

@@ -24,11 +24,6 @@ write.table(trends.csv, file = paste(out.dir,
                                      name, "_TrendsEndpoint_iCAR.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
-# #Slope Trends
-# write.table(trends.csv, file = paste(out.dir, 
-#                                      name, "_TrendsSlope_iCAR.csv", sep = ""), 
-#             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
-
 ## Create .csv file for dispersion stat
 
 dispersion.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3, byrow = FALSE,
@@ -38,13 +33,4 @@ names(dispersion.csv) <- c("area_code", "SpeciesCode", "dispersion")
 write.table(dispersion.csv, file = paste(out.dir,  name, "_DispersionStat_iCAR.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
-
-## Create .csv file for DIC and WIC scores
-
-model.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 4, byrow = FALSE,
-                                       dimnames = NULL))
-names(model.csv) <- c("ModelType", "DIC", "WIC", "SpeciesCode")
-
-write.table(model.csv, file = paste(out.dir,  name, "_ModelComparison_iCAR.csv", sep = ""), 
-            row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
