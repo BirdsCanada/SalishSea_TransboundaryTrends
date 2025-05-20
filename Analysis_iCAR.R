@@ -1,10 +1,5 @@
 #Analysis iCAR
 
-# #Load your saved species data 
-# sp.data<-read.csv("Data/sp.data.csv")
-# #Load your saved events data which is needed for zero-filling
-# events<-read.csv("Data/events.csv")
-
 
 if(length(species.list) == 1){
   sp.list<-unique(sp.data$CommonName)
@@ -12,30 +7,9 @@ if(length(species.list) == 1){
   sp.list<-species.list
 }
 
-if(area=="BCCWS"){
-  
-  sp.dat<-sp.data %>% filter(ProjectCode=="BCCWS")
-  event<-events %>% filter(ProjectCode=="BCCWS")
-
-}  
-
-if(area=="PSSS"){
-  
-  sp.dat<-sp.data %>% filter(ProjectCode=="PSSS")
-  event<-events %>% filter(ProjectCode=="PSSS")
-
-  #This is fixed in the data cleaning script and can be removed during next round. 
-  event<-event %>% filter(DurationInHours<=3)
-  
-} 
-
-#Specify the spatial extent of the analysis
-if(area=="SalishSea"){
-  
   sp.dat<-sp.data 
   event<-events
   
-}
 
 ##remove COVID data 
 sp.dat<-sp.dat %>% filter(wyear != 2020)
@@ -163,7 +137,7 @@ for(i in 1:length(sp.list)){
       min.data <- FALSE
     }
     
-    print(paste(sp.list[i], min.data))
+    print(paste("Did", sp.list[i], "meet minimum data requirements:", min.data))
     
     #only continue if the species meets the minimum data requirements      
     if(min.data==TRUE){
@@ -217,7 +191,7 @@ for(i in 1:length(sp.list)){
           # cell ICAR random intercepts
           f(alpha_i, model="besag", graph=g1, constr=FALSE, scale.model=TRUE, hyper = hyper.iid) +
           # random route intercepts
-          f(kappa, model = "iid", hyper = hyper.iid,)
+          f(kappa, model = "iid", hyper = hyper.iid)
        
       }else{
         
@@ -244,17 +218,16 @@ for(i in 1:length(sp.list)){
                    ), 
                    control.family = list(
                      hyper = list(theta = list(prior = "loggamma", param = c(3, 0.1)))
-                   ),
-                   verbose = TRUE
+                   )
       ))
   
       #Dispersion Statistic
       mu1<-M2$summary.fitted.values[,"mean"]
       E1<-(dat$ObservationCount-mu1)/ sqrt(mu1 + mu1^2) #Pearson residuals
       N<-nrow(dat)
-      p<-nrow(M0$summary.fixed + 2) # +1 for each the idd random effect
+      p<-nrow(M2$summary.fixed + 2) # +1 for each the idd random effect
       Dispersion1<-sum(E1^2)/(N-p)
-      print(paste("Dispersions Statistic out1 = ", Dispersion1, sep = ""))
+      print(paste(sp.list[i], " Dispersions Statistic = ", Dispersion1, sep = ""))
       
       #write the dispersion statistic to the output file
       dispersion.csv$area_code<-area
@@ -279,24 +252,6 @@ for(i in 1:length(sp.list)){
       
       ##Remove polygons with no survey sites
       cells_with_counts <- unique(dat$alpha_i[which(!is.na(dat$ObservationCount))]) 
-      grid2<-grid_key[grid_key$alpha_i %in% cells_with_counts, ]
-   
-      #posterior sample 
-      posterior_ss <- 100 # change as appropriate
-      samp1 <- inla.posterior.sample(posterior_ss, M2)
-      par_names <- as.character(attr(samp1[[1]]$latent, "dimnames")[[1]])
-      post1 <- as.data.frame(sapply(samp1, function(x) x$latent))
-      post1$par_names <- par_names
-      
-      #alph samples
-      alpha_samps1 <- post1[grep("alpha_i", post1$par_names), ]
-      row.names(alpha_samps1) <- NULL
-      alpha_samps1 <- alpha_samps1[cells_with_counts, 1:posterior_ss]
-      alpha_samps1 <- exp(alpha_samps1) 
-      alpha_samps2 <- cbind(grid2, alpha_samps1)
-      row.names(alpha_samps2) <- NULL
-      val_names <- grep("V", names(alpha_samps2))
-
       
       #Calculate Posterior estimate of abundance
       nsamples<- 100
@@ -317,11 +272,11 @@ for(i in 1:length(sp.list)){
       
       #will want to adjust V to match the posterior sample size   
       tmp1<-tmp1 %>% group_by(wyear, alpha_i) %>% summarise_all(mean, na.rm=TRUE)
-      tmp1<-tmp1 %>% rowwise() %>% mutate(index = median(c_across(V3:V102)), 
-                                          lower_ci=quantile(c_across(V3:V101), 0.025), 
-                                          upper_ci=quantile(c_across(V3:V101), 0.975), 
-                                          stdev=sd(c_across(V3:V101)), 
-                                          stderr = stdev / sqrt(100))  
+      tmp1<-tmp1 %>% rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
+                                          lower_ci=quantile(c_across(starts_with("V")), 0.025), 
+                                          upper_ci=quantile(c_across(starts_with("V")), 0.975), 
+                                          stdev=sd(c_across(starts_with("V"))), 
+                                          stderr = stdev / sqrt(nsamples))  
       
       #link back this the site name using the grid_key
       grid3<-grid %>% st_drop_geometry() %>% 

@@ -130,11 +130,11 @@ During this process some species are combined following advise from the survey c
 
 Other non-target species are also removed i.e., any species detected less than 10 times over all years is considered rare and removed.
 
-This part of the code also creates and events martix for each program. This is what is used for zero-filling during the species ir guild specific analysis.
+This part of the code also creates and events martix for each program. This is what is used for zero-filling during the species or guild specific analysis.
 
--   wmonth = MonthCollected (1=September to 8=April) #This term was unidentifiable. We will therefore that the max winter count
+-   wmonth = MonthCollected (1=September to 8=April)
 -   wyear
--   ObservationCount3 for BCCWS to match
+-   ObservationCount3 for BCCWS to match PSSS protocol
 -   Sampling events matrix
 
 ```{r}

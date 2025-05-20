@@ -61,9 +61,12 @@ if(guild=="Yes"){
 
 #Create a loop for the species list
   for(i in 1:length(sp.list)){
+  # for(i in 38:length(sp.list)){ #restarting loop if it breaks
    dat<-NULL 
     #i<-1 #for testing
-    
+   
+   print(paste("Currently analyzing species ", i, "/", sp.list[i], sep = "")) 
+   
     if(guild =="Yes"){
     dat <- sp.dat %>% filter(Guild==sp.list[i])
     dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, .keep_all = TRUE)
@@ -155,7 +158,7 @@ if(nrow(dat)>0){
   min.data <- FALSE
     }
 
-    print(paste(sp.list[i], min.data))
+    print(paste("Did", sp.list[i], "meet minimum data requirements:", min.data))
     
     #only continue if the species meets the minimum data requirements      
 if(min.data==TRUE){
@@ -194,23 +197,16 @@ if(min.data==TRUE){
        f(year_idx, model = "iid", hyper = hyper.iid) +  
        f(kappa, model="iid", hyper=hyper.iid) +  #in the spatial model we remove site as the variation will be captured in the spatial component. 
        f(sp_idx, model="iid", hyper=hyper.iid) 
-       #f(protocol, model = "iid", hyper = hyper.iid)
-       #f(wmonth_idx, model = "ar1", hyper=hyper.iid) 
-       #f(wmonth_idx, model = "seasonal", season.length = 7) #Represent within-sampled-period seasonality
      
    }else{
     
      formula<- ObservationCount ~ -1 + 
       f(year_idx, model = "iid", hyper = hyper.iid) +  
       f(kappa, model="iid", hyper=hyper.iid)
-      #f(protocol, model = "iid", hyper = hyper.iid)
-      #f(wmonth_idx, model = "ar1", hyper=hyper.iid) 
-      #f(wmonth_idx, model = "seasonal", season.length = 7) #Represent within-sampled-period seasonality
-
    }
      
      M0<-try(inla(formula, family = fam, data = dat, offset = log(dat$DurationInHours),
-                 control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE), verbose =TRUE), silent = T)
+                 control.predictor = list(compute = TRUE), control.compute = list(dic=TRUE, config = TRUE)), silent = T)
     
 
     #Dispersion Statistic to determiner is nbinomial is value
@@ -219,8 +215,8 @@ if(min.data==TRUE){
     N<-nrow(dat)
     p<-nrow(M0$summary.fixed + 2) # +1 for each the idd random effect
     Dispersion1<-sum(E1^2)/(N-p)
-    print(paste("Dispersions Statistic out1 = ", Dispersion1, sep = ""))
-
+    print(paste(sp.list[i], " Dispersions Statistic = ", Dispersion1, sep = ""))
+    
     #write the dispersion statistic to the output file
     dispersion.csv$area_code<-area
     dispersion.csv$SpeciesCode<-sp.list[i]
@@ -283,20 +279,16 @@ N<-nrow(dat)
         Intercept=rep(1, N),
         kappa = dat$kappa, 
         sp_idx = dat$sp_idx,
-        #protocol = dat$protocol,
         year_idx=dat$year_idx
-        #wmonth_idx = dat$wmonth_idx
-      )
+        )
       
     }else{
 
     Covariates<- data.frame(
       Intercept=rep(1, N),
        kappa = dat$kappa, 
-       #protocol = dat$protocol, 
        year_idx=dat$year_idx 
-       #wmonth_idx = dat$wmonth_idx
-    )
+       )
     }
 
     #Create the Mesh
@@ -363,29 +355,17 @@ N<-nrow(dat)
       
       formula.sp<- count ~ -1 + Intercept + 
       f(year_idx, model = "iid", hyper = hyper.iid) +  
-      #f(protocol, model = "iid", hyper = hyper.iid) +
-      #wmonth_idx +
-      #f(year_idx, model="iid", hyper=hyper.iid) + #so that alpha can be calculated per year
       f(kappa, model="iid", hyper=hyper.iid) + #site effect replaced with spatail 
       f(sp_idx, model="iid", hyper=hyper.iid) + 
-      #f(wmonth_idx, model = "rw1", cyclic=TRUE) +
-      #f(wmonth_idx, model = "seasonal", season.length = 7) +
-      #f(wmonth_idx, model="iid", hyper=hyper.iid)+
       f(alpha, model =spde)
-      #f(tau, model =spde)
+
     
       }else{
     
      formula.sp<- count ~ -1+ Intercept + 
-       f(year_idx, model = "iid", hyper = hyper.iid) + 
-      #f(protocol, model = "iid", hyper = hyper.iid)+
-      #wmonth_idx +
-      #f(year_idx, model="iid", hyper=hyper.iid) +
+      f(year_idx, model = "iid", hyper = hyper.iid) + 
       f(kappa, model="iid", hyper=hyper.iid) + #site effect replaced with spatial
-      #f(wmonth_idx, model = "rw1", cyclic = TRUE) +
-      #f(wmonth_idx, model = "seasonal", season.length = 7) + #Represent within-sampled-period seasonality
       f(alpha, model =spde) 
-      #f(tau, model =spde)
     }   
 
 
@@ -412,23 +392,10 @@ N<-nrow(dat)
       ), 
       control.family = list(
         hyper = list(theta = list(prior = "loggamma", param = c(3, 0.1)))
-      ),
-      verbose = TRUE
+      )
     )
     
     
-  #Compare the DIC and WIC values
-   z.out<-NULL
-   dic<-c(M0$dic$dic, M1$dic$dic)
-   wic<-c(M0$waic$waic, M1$waic$waic)
-   ModelType<-c("GAM", "GAM + SPATIAL")
-   z.out<-cbind(ModelType, dic, wic)
-   z.out<-as.data.frame(z.out)
-   z.out$SpeciesCode<-sp.code
-
-   write.table(z.out, file = paste(out.dir,  name, "_ModelComparison.csv", sep = ""),
-               col.names = FALSE, row.names = FALSE, append = TRUE, quote = FALSE, sep = ",")
-   
 #Calculate Posterior estimate of abundance
 nsamples<- 100
 post.sample1 <-NULL #clear previous
@@ -437,7 +404,7 @@ post.sample1<-inla.posterior.sample(nsamples, M1)
 tmp1<-NULL
 tmp1 <- dat %>% dplyr::select(wyear) %>% st_drop_geometry() 
 
-#for each sample in the posterior we want to join the predicted to tmp so that the predictions line up with wmonth/year and we can get the mean count by year
+#for each sample in the posterior we want to join the predicted to tmp so that the predictions line up with year and we can get the mean count by year
 for (h in 1:nsamples){
   pred<-exp(post.sample1[[h]]$latent[1:nrow(dat)])
   tmp1[ncol(tmp1)+1]<-pred
@@ -518,7 +485,7 @@ y2 <- nyears
   #write output to table   
   trend.out<-NULL
   trend.out <- pred.ch %>%
-    mutate(model_type="GLM MONTH AR1 ALPHA+TAU SPATIAL", 
+    mutate(model_type="ALPHA SPATIAL SPDE", 
            model_family = fam,
            years = paste(Y1, "-", Y2, sep = ""),
            year_start=Y1, 
@@ -643,13 +610,13 @@ y2 <- nyears
     )
 
   #Assign data to output table 
-  indices.csv<-annual_grid %>% dplyr::select(area_code, wyear, index, lower_ci, upper_ci, stdev) %>% mutate(
+  indices.csv<-annual_grid %>% dplyr::select(area_code, wyear, index, lower_ci, upper_ci, stdev, stderr) %>% mutate(
     species_code = sp.code,
     years = paste(min(dat$wyear), "-", max(dat$wyear), sep = ""),
     year = wyear,
     period ="all years",
     season = "winter",
-    model_type = "GLM MONTH AR1 ALPHA+TAU SPATIAL",
+    model_type = "ALPHA SPATIAL SPDE",
     species_id=sp.id,
     species_name=species_name,
     species_sci_name=species_sci_name,
@@ -698,17 +665,27 @@ y2 <- nyears
   
   ###NEEDS FIXED SEE iCAR
   # Calculate annual indices per site
-  trends_by_site <- tmp1_site %>%
-    group_by(SurveyAreaIdentifier, wyear) %>%
-    summarise(across(starts_with("V"), mean), .groups = "drop") %>%
-    rowwise() %>%
-    mutate(
-      index = median(c_across(starts_with("V"))),
-      lower_ci = quantile(c_across(starts_with("V")), 0.025),
-      upper_ci = quantile(c_across(starts_with("V")), 0.975),
-      stdev = sd(c_across(starts_with("V")))
-    ) %>%
-    select(-starts_with("V"))  # Remove sample columns
+  # trends_by_site <- tmp1_site %>%
+  #   group_by(SurveyAreaIdentifier, wyear) %>%
+  #   summarise(across(starts_with("V"), mean), .groups = "drop") %>%
+  #   rowwise() %>%
+  #   mutate(
+  #     index = median(c_across(starts_with("V"))),
+  #     lower_ci = quantile(c_across(starts_with("V")), 0.025),
+  #     upper_ci = quantile(c_across(starts_with("V")), 0.975),
+  #     stdev = sd(c_across(starts_with("V")))
+  #   ) %>%
+  #   select(-starts_with("V"))  # Remove sample columns
+  
+  
+  #will want to adjust V to match the posterior sample size   
+  trends_by_site<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(mean, na.rm=TRUE) 
+  %>% rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
+                                      lower_ci=quantile(c_across(starts_with("V")), 0.025), 
+                                      upper_ci=quantile(c_across(starts_with("V")), 0.975), 
+                                      stdev=sd(c_across(starts_with("V"))), 
+                                      stderr = stdev / sqrt(nsamples))  %>%
+     select(-starts_with("V")) 
   
   period_num=Y2-Y1
   
@@ -733,14 +710,14 @@ y2 <- nyears
     mutate(trnd = trend, 
            lower_ci = lci, 
            upper_ci = uci,
-           model_type="GLM MONTH AR1 ALPHA+TAU SPATIAL", 
+           model_type="ALPHA SPATIAL SPDE", 
            model_family = fam,
            years = paste(Y1, "-", Y2, sep = ""),
            year_start=start_year, 
            year_end=end_year,
            period ="all years",
            season = "winter",
-           results_code = "BCCWS+PSSS",
+           results_code = "BCCWS/PSSS",
            area_code = SurveyAreaIdentifier,
            version=2025, 
            species_code = sp.code,

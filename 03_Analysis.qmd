@@ -1,0 +1,193 @@
+--- title: "03_DataAnalysis" format: html editor: visual editor_options: chunk_output_type: console ---
+
+# 3. Analysis {#3.0Analysis}
+
+Run setup if starting a new environment.
+
+```{r}
+
+source("00_Setup.R")
+
+#Manually Specify the start and end year of the analysis. These years should match those selected for the data cleaning scripts. 
+Y1 = 2008
+Y2 = 2024
+
+#Load your saved species data 
+sp.data<-read.csv("Data/sp.data.csv")
+#Load your saved events data which is needed for zero-filling
+events<-read.csv("Data/events.csv")
+
+```
+
+## 3.1 Set Analysis Parameters {#3.1Analysis}
+
+Here the user has several customization options.
+
+### 3.1.1 Model Type
+
+You can choose the continuous space "SPDE" or discrete space "iCAR" method.
+
+```{r}
+
+model<-"SPDE"
+
+```
+
+If doing an SPDE model, you may define your `area` as "SalishSea", "BCCWS", or "PSSS".
+
+```{r}
+
+area <- "SalishSea"
+
+```
+
+If doing an iCAR model, upload the desired spatial polygon for the analysis. We use Watersheds in the Salish Sea Bioregion layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/) as an example.
+
+A polygon should have counts in all years to ensure that sampling is complete and consistent. Those that have incomplete time series are removed.
+
+```{r spatial}
+
+#Load your .shp file saved in the Data/Sptial folder
+poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp")
+
+#create your point layer
+loc<-events %>% select(SurveyAreaIdentifier, DecimalLatitude, DecimalLongitude) %>% distinct()
+xy<-st_as_sf(loc, coords = c("DecimalLongitude", "DecimalLatitude"))
+st_crs(xy)<-"+proj=longlat +datum=NAD83"
+
+#ensure the coordinate reference systems are the same
+newCRS<-st_crs(poly) #get the CRS of the poly data
+xy<-st_transform(xy, newCRS) #transform 
+Grid <- poly %>% st_filter(xy, .pred = st_intersects) #intersect between point and polygon
+Grid$Name[15]<-"Central Vancover Island" #rename one of the polygons as it is duplicated 
+loc.xy<- st_join(Grid, xy) #add SurveyAreaIdentifier to polygon name
+
+#Visualize your points and polygons before proceeding
+#Load basemap for the Data folder
+map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
+map_sf <- st_transform(map, st_crs(newCRS))
+
+ggplot() +
+  geom_sf(data = Grid, aes(fill = Name), color = "black") +
+  geom_sf(data = map_sf, size = 0.2) +
+  geom_sf(data = xy, color = "black", size = 1) +
+  theme_minimal()
+
+grid<-loc.xy %>% 
+  st_drop_geometry() %>% 
+  select(SurveyAreaIdentifier, Name) %>% #select the name and/or ID associated with your polygon. 
+  distinct() %>% 
+  mutate(alpha_i = as.integer(factor(Name))) #create the alpha index for the analysis 
+
+#joint to your events layer
+events<-left_join(events, grid, by="SurveyAreaIdentifier") %>% st_drop_geometry()
+#remove the areas that fall outside the polygons
+events<-events %>% drop_na(Name)
+
+```
+
+### 3.1.2 Species or Guild Specific Analysis
+
+For a species-specific analysis, select the species you wish to analyse.
+
+```{r}
+
+#To view your options of species
+species<-unique(sp.data$CommonName)
+#view(species)
+
+#Create a list of species using all available species in the dataset.
+species.list<-"ALL"
+
+#Or you can manually select species.
+#species.list <- c("American Wigeon", "Common Loon", "Large Gull") 
+
+
+```
+
+For a guild-specific analysis, change `guild` to "Yes" and specify the `type` as either "migration", "diet", or "family". This will override the species list above.
+
+*You do not need to run this code chunk if doing a species-specific analysis. Default guild is set to "No".*
+
+```{r}
+
+guild <- "No"
+type <-"family"
+
+#To view your options of guilds
+migration<-unique(sp.data$Migration)
+#view(migration)
+
+diet<-unique(sp.data$Diet)
+#view(diet)
+
+family<-unique(sp.data$family_name)
+#view(family)
+
+```
+
+### 3.1.3 Minimum Data Requirement
+
+Select the minimum data requirements for the analysis. The ones selected here were done following the inspection of the International dataset. However, finer scale assessment may need to assess their suitability.
+
+```{r}
+
+#The minimum data required across sites with at least one detection:
+
+min.abundance <- 10 #Overall abundance per year > 10
+min.years <- (Y2-Y1)/2 #Detected in > one-half of the survey years
+nsites <- 10 #Detected at > 10 survey sites
+
+```
+
+### 3.1.4 Model Specifications
+
+Select the distributional family, and set random and spatial priors, or retain the defaults.
+
+```{r}
+
+#Here we select 'nbinomal' but this may need to adjust if there is residual overdispersion. 
+
+fam<-'nbinomial'
+
+#Other distribution options to consider
+#fam<-'zeroinflatednbinomial1'
+#fam<-'poisson'
+
+#Priors for the random effects
+hyper.iid <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
+
+#SPDE spatial priors
+prior.range = c(20, 0.5)  # 50% probability range >20 km  
+prior.sigma = c(1, 0.1)   # 10% probability stdev >1 
+
+```
+
+## 3.2 Analysis {#3.2Analysis}
+
+Create output tables to the `Output` folder using a custom file `name`.
+
+The files that this code creates is a file for Annual Indices for each sampling site, end-point Trends, and a file with the Dispersion statistic.
+
+You are ready to start your analysis! The analysis will write results to the files on the folder and also create some plots for model checking.
+
+```{r}
+
+#Give your analytically output file a unique name (e.g., BCCWS_Species, SalishSea_migration, Watershed_Species), 
+
+name<-"SalishSea_Species"
+
+#This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
+
+#Create output tables, which will include your custom name and the `model` you specified.
+output_tables(name, model)
+
+#Now we can initiate the analysis based on the `model` you previously specified.   
+run_analysis(model)
+
+
+```
+
+Note that the Dispersion Statistic file in the Output folder should be reviewed after the analysis. If the statistic is \> 10 you should inspect the FitPlots in the Plot directory. In this case we will want to rerun using a different distributional assumption on the counts. This can be done by manually changing the `fam` to Poission and selecting these species to be rerun.
+
+## 3.3 Results {#3.3Vis}

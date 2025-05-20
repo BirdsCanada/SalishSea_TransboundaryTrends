@@ -9,6 +9,9 @@ if(!dir.exists("Data/Spatial")) dir.create("Data/Spatial")
 if(!dir.exists("Output")) dir.create("Output")
 if(!dir.exists("Output/Plots")) dir.create("Output/Plots")
 
+source("OutputTables.R")
+#source("Analysis_SPDE.R")
+#source("Analysis_iCAR.R")
 
 #Assign directories
 out.dir <- "Output/"

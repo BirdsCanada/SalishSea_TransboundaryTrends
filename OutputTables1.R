@@ -24,11 +24,6 @@ write.table(trends.csv, file = paste(out.dir,
                                      name, "_TrendsEndpoint_SPDE.csv", sep = ""), 
             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
 
-# #Slope Trends
-# write.table(trends.csv, file = paste(out.dir, 
-#                                      name, "_TrendsSlope.csv", sep = ""), 
-#             row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
-
 ## Create .csv file for dispersion stat
 
 dispersion.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3, byrow = FALSE,
