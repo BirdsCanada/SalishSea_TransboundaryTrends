@@ -1,6 +1,6 @@
 ## Set up output tables
 
-output_tables <- function(out.dir, name, model = c("SPDE", "iCAR")) {
+output_tables <- function(name, model = c("SPDE", "iCAR")) {
   model <- match.arg(model)
   
   # File suffix based on model

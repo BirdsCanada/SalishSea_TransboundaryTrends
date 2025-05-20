@@ -111,9 +111,6 @@ For a guild-specific analysis, change `guild` to "Yes" and specify the `type` as
 
 ```{r}
 
-guild <- "No"
-type <-"family"
-
 #To view your options of guilds
 migration<-unique(sp.data$Migration)
 #view(migration)
@@ -123,6 +120,9 @@ diet<-unique(sp.data$Diet)
 
 family<-unique(sp.data$family_name)
 #view(family)
+
+guild <- "Yes"
+type <-"migration"
 
 ```
 
