@@ -263,13 +263,10 @@ for(i in 1:length(sp.list)){
       
       #for each sample in the posterior we want to join the predicted to tmp so that the predictions line up with year and we can get the mean count by year
       for (h in 1:nsamples){
-        pred<-exp(post.sample1[[h]]$latent[1:nrow(dat)])
-        tmp1[ncol(tmp1)+1]<-pred
+        pred <- exp(post.sample1[[h]]$latent[1:nrow(dat)])
+        tmp1[[paste0("V", h+1)]] <- pred
       }
-      
-      # Rename the columns from V3 to V101
-      colnames(tmp1)[3:(nsamples + 2)] <- paste0("V", 3:(nsamples + 2))
-      
+    
       #will want to adjust V to match the posterior sample size   
       tmp1<-tmp1 %>% group_by(wyear, alpha_i) %>% summarise_all(mean, na.rm=TRUE)
       tmp1<-tmp1 %>% rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 

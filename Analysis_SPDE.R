@@ -580,60 +580,84 @@ post.sample1<-inla.posterior.sample(nsamples, M1)
 #   
 
 ############################################################################################  
-##Annual site level index
-  Loc_unique2 <- dat %>%
-    dplyr::select(SurveyAreaIdentifier, easting, northing) %>%
-    distinct(easting, northing, .keep_all = TRUE) %>%  # Keep unique coordinates with IDs
-    st_drop_geometry() %>%
-    as.matrix()
-  
-  # Prepare year mapping with standardized values
-  year_table <- dat %>%
-    distinct(wyear, std_yr) %>%
-    arrange(wyear)
-  
-  # Create unique location-year grid
-  locations <- data.frame(
-    area_code = Loc_unique2[, "SurveyAreaIdentifier"],
-    easting = Loc_unique2[, "easting"],
-    northing = Loc_unique2[, "northing"]
-  )
-  annual_grid <- expand_grid(
-    locations,
-    year_table
-  )
-  
-  # Create projection matrices for unique locations
-  A_alpha_unique <- inla.spde.make.A(mesh = mesh2, loc = Loc_unique)
-  
-  #create output matrix
-  post_samples <- matrix(nrow = nrow(annual_grid), ncol = nsamples)
-  
-  for (h in 1:nsamples) {
-    # Extract spatial field samples
-    alpha_sample <- post.sample1[[h]]$latent[grep("alpha", rownames(post.sample1[[h]]$latent))]
-    
-    # Project to unique locations
-    alpha_loc <- as.vector(A_alpha_unique %*% alpha_sample)
-    
-    # Match locations and compute annual index
-    index <- exp(alpha_loc)
-    
-    post_samples[, h] <- index
-  }
-  
-  # Summarize posterior samples
-  annual_grid <- annual_grid %>%
-    mutate(
-      index = apply(post_samples, 1, median),
-      stdev = apply(post_samples, 1, sd),
-      stderr= apply(post_samples, 1, function(x) sd(x) / sqrt(length(x))),
-      lower_ci = apply(post_samples, 1, quantile, probs = 0.025),
-      upper_ci = apply(post_samples, 1, quantile, probs = 0.975)
-    )
+# ##Annual site level index
+#   Loc_unique2 <- dat %>%
+#     dplyr::select(SurveyAreaIdentifier, easting, northing) %>%
+#     distinct(easting, northing, .keep_all = TRUE) %>%  # Keep unique coordinates with IDs
+#     st_drop_geometry() %>%
+#     as.matrix()
+#   
+#   # Prepare year mapping with standardized values
+#   year_table <- dat %>%
+#     distinct(wyear, std_yr) %>%
+#     arrange(wyear)
+#   
+#   # Create unique location-year grid
+#   locations <- data.frame(
+#     area_code = Loc_unique2[, "SurveyAreaIdentifier"],
+#     easting = Loc_unique2[, "easting"],
+#     northing = Loc_unique2[, "northing"]
+#   )
+#   annual_grid <- expand_grid(
+#     locations,
+#     year_table
+#   )
+#   
+#   # Create projection matrices for unique locations
+#   A_alpha_unique <- inla.spde.make.A(mesh = mesh2, loc = Loc_unique)
+#   
+#   #create output matrix
+#   post_samples <- matrix(nrow = nrow(annual_grid), ncol = nsamples)
+#   
+#   for (h in 1:nsamples) {
+#     # Extract spatial field samples
+#     alpha_sample <- post.sample1[[h]]$latent[grep("alpha", rownames(post.sample1[[h]]$latent))]
+#     
+#     # Project to unique locations
+#     alpha_loc <- as.vector(A_alpha_unique %*% alpha_sample)
+#     
+#     # Match locations and compute annual index
+#     index <- exp(alpha_loc)
+#     
+#     post_samples[, h] <- index
+#   }
+#   
+#   # Summarize posterior samples
+#   annual_grid <- annual_grid %>%
+#     mutate(
+#       index = apply(post_samples, 1, median),
+#       stdev = apply(post_samples, 1, sd),
+#       stderr= apply(post_samples, 1, function(x) sd(x) / sqrt(length(x))),
+#       lower_ci = apply(post_samples, 1, quantile, probs = 0.025),
+#       upper_ci = apply(post_samples, 1, quantile, probs = 0.975)
+#     )
 
-  #Assign data to output table 
-  indices.csv<-annual_grid %>% dplyr::select(area_code, wyear, index, lower_ci, upper_ci, stdev, stderr) %>% mutate(
+  
+# Include SurveyAreaIdentifier in tmp1
+tmp1<- dat %>% 
+  dplyr::select(SurveyAreaIdentifier, wyear) %>% 
+  st_drop_geometry()
+
+# Add posterior samples
+for (h in 1:nsamples){
+  pred <- exp(post.sample1[[h]]$latent[1:nrow(dat)])
+  tmp1[[paste0("V", h+1)]] <- pred
+}
+
+
+#will want to adjust V to match the posterior sample size   
+tmp0<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(mean, na.rm=TRUE) %>% 
+  rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
+                       lower_ci=quantile(c_across(starts_with("V")), 0.025), 
+                       upper_ci=quantile(c_across(starts_with("V")), 0.975), 
+                       stdev=sd(c_across(starts_with("V"))), 
+                       stderr = stdev / sqrt(nsamples), 
+                       area_code=SurveyAreaIdentifier)  %>%  select(-starts_with("V")) 
+
+
+#Assign data to output table 
+  indices.csv<-tmp0 %>% dplyr::select(area_code, wyear, index, lower_ci, upper_ci, stdev, stderr) %>%
+    ungroup() %>% mutate(
     species_code = sp.code,
     years = paste(min(dat$wyear), "-", max(dat$wyear), sep = ""),
     year = wyear,
@@ -674,69 +698,57 @@ post.sample1<-inla.posterior.sample(nsamples, M1)
   ##############################################################################
   ##END POINT TRENDS for each site
   
-  # Include SurveyAreaIdentifier in tmp1
-  tmp1_site <- dat %>% 
-    dplyr::select(SurveyAreaIdentifier, wyear) %>% 
-    st_drop_geometry()
-  
-  # Add posterior samples
-  for (h in 1:nsamples){
-    pred <- exp(post.sample1[[h]]$latent[1:nrow(dat)])
-    tmp1_site[[paste0("V", h+1)]] <- pred
-  }
-  
-  
-  ###NEEDS FIXED SEE iCAR
-  # Calculate annual indices per site
-  # trends_by_site <- tmp1_site %>%
-  #   group_by(SurveyAreaIdentifier, wyear) %>%
-  #   summarise(across(starts_with("V"), mean), .groups = "drop") %>%
-  #   rowwise() %>%
-  #   mutate(
-  #     index = median(c_across(starts_with("V"))),
-  #     lower_ci = quantile(c_across(starts_with("V")), 0.025),
-  #     upper_ci = quantile(c_across(starts_with("V")), 0.975),
-  #     stdev = sd(c_across(starts_with("V")))
-  #   ) %>%
-  #   select(-starts_with("V"))  # Remove sample columns
-  
-  
-  #will want to adjust V to match the posterior sample size   
-  trends_by_site<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(mean, na.rm=TRUE) 
-  %>% rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
-                                      lower_ci=quantile(c_across(starts_with("V")), 0.025), 
-                                      upper_ci=quantile(c_across(starts_with("V")), 0.975), 
-                                      stdev=sd(c_across(starts_with("V"))), 
-                                      stderr = stdev / sqrt(nsamples))  %>%  select(-starts_with("V")) 
-  
-  period_num=Y2-Y1
-  
-  # Calculate endpoint trends (first vs last year)
-  endpoint_trends <- trends_by_site %>%
-    group_by(SurveyAreaIdentifier) %>%
-    filter(wyear == min(wyear) | wyear == max(wyear)) %>%
+  tmp2 <- tmp1 %>%
+  group_by(SurveyAreaIdentifier) %>%
+  mutate(
+    year_start = min(wyear),
+    year_end = max(wyear)
+  ) %>%
+  filter(wyear == year_start | wyear == year_end) %>%
+  ungroup() %>%
+  pivot_longer(
+    cols = starts_with("V"),  # All columns starting with "V"
+    names_to = "simulation",
+    values_to = "abundance"
+  ) %>%
+  group_by(SurveyAreaIdentifier, simulation) %>%
+  mutate(year_type = ifelse(wyear == year_start, "start", "end")) %>%
+  pivot_wider(
+    id_cols = c(SurveyAreaIdentifier, simulation, year_start, year_end),
+    names_from = year_type,
+    values_from = abundance
+  ) %>%
+  mutate(
+    trend = 100 * ((end/start)^(1/(year_end - year_start)) - 1)
+  )
+
+  tmp2 <- tmp2 %>%
+    group_by(SurveyAreaIdentifier, year_start, year_end) %>%
     summarise(
-      start_year = first(wyear),
-      end_year = last(wyear),
-      trend = last(index)/first(index) - 1,
-      lci = last(lower_ci)/first(upper_ci) - 1,
-      uci = last(upper_ci)/first(lower_ci) - 1, 
-      Width_of_Credible_Interval = uci-lci, 
-      per_trend = trend/100, 
-      percent_change = ((1+per_trend)^period_num-1)*100
+      trnd = median(trend, na.rm = TRUE),
+      lower_ci = quantile(trend, 0.025, na.rm = TRUE),
+      upper_ci = quantile(trend, 0.975, na.rm = TRUE),
+      sddev = sd(trend, na.rm = TRUE),
+      sterr = sd(trend, na.rm = TRUE) / sqrt(nsamples),
+      .groups = "drop"
     )
   
+  tmp2<-tmp2 %>% mutate(
+    Width_of_Credible_Interval = upper_ci - lower_ci,
+    precision_cat = case_when(
+      Width_of_Credible_Interval < 3.5 ~ "High",
+      Width_of_Credible_Interval >= 3.5 & Width_of_Credible_Interval <= 6.7 ~ "Medium",
+      TRUE ~ "Low"
+    )
+  )
+  
+ 
   #write output to table   
   trend.out<-NULL
-  trend.out <- endpoint_trends %>%
-    mutate(trnd = trend, 
-           lower_ci = lci, 
-           upper_ci = uci,
-           model_type="ALPHA SPATIAL SPDE", 
+  trend.out <- tmp2 %>%
+    mutate(model_type="ALPHA SPATIAL SPDE", 
            model_family = fam,
            years = paste(Y1, "-", Y2, sep = ""),
-           year_start=start_year, 
-           year_end=end_year,
            period ="all years",
            season = "winter",
            results_code = "BCCWS/PSSS",

@@ -25,6 +25,35 @@ run_analysis <- function(model = c("SPDE", "iCAR")) {
   message("Analysis for model '", model, "' has been run.")
 }
 
+compute_dispersion_spatial <- function(M1, Stack, family) {
+  # Extract indices of estimation points from the stack
+  stack_data <- inla.stack.data(Stack)
+  est_indices <- which(!is.na(stack_data$count))  # Identify non-NA responses
+  
+  # Align observed and fitted values
+  observed <- stack_data$count[est_indices]
+  fitted_mean <- M1$summary.fitted.values$mean[est_indices]
+  
+  # Calculate effective parameters
+  p_eff <- M1$dic$p.eff
+  n <- length(observed)
+  
+  # Compute Pearson residuals
+  if(family == "nbinomial") {
+    theta <- M1$summary.hyperpar$mean[1]
+    pearson <- (observed - fitted_mean) / sqrt(fitted_mean * (1 + fitted_mean/theta))
+  } else if(family == "poisson") {
+    pearson <- (observed - fitted_mean) / sqrt(fitted_mean)
+  } else {
+    stop("Family must be 'poisson' or 'nbinomial'")
+  }
+  
+  # Dispersion statistic
+  dispersion_stat <- sum(pearson^2) / (n - p_eff)
+  
+  return(dispersion_stat)
+} 
+
 #Assign directories
 out.dir <- "Output/"
 data.dir <- "Data/"
