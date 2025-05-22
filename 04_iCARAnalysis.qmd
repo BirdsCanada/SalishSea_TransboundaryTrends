@@ -143,7 +143,7 @@ family<-unique(sp.data$family_name)
 #If you wish to do a guild-specific analysis, change to "Yes" and specify the `type` as either "migration", "diet", or "family". This will override the species list above. 
 
 guild <- "Yes"
-type <-"diet"
+type <-"migration"
 
 ```
 
@@ -155,7 +155,7 @@ type <-"diet"
 #Give your analytically output file a unique name 
 #e.g., BCCWS_Species, SalishSea_guild
 
-name<-"SalishSea_Species"
+name<-"SalishSea_Migration"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 source("OutputTables2.R")
@@ -172,6 +172,57 @@ Note that the Dispersion Statistic file in the Output folder should be reviewed 
 ```{r}
 
 source("Graph_iCAR.R")
+
+```
+
+
+
+```{r}
+
+#Get the British Columbia, Canada and Washington, US shapefiles from the naturalearth package. 
+
+canada <- ne_states(country = "canada", returnclass = "sf") 
+BC<- canada[canada$name=="British Columbia",]
+
+us<- ne_states(country = "united states of america", returnclass = "sf") 
+WA<- us[us$name=="Washington",]
+
+#Combine the two shapefiles
+salish_sea <- rbind(BC, WA)
+
+events_sf <- st_transform(events_sf, st_crs(salish_sea))
+
+# Get the index of the nearest country for each event
+nearest_indices <- st_nearest_feature(events_sf, salish_sea)
+
+# Assign the country names based on the nearest indices
+events_sf$Province <- salish_sea$name[nearest_indices]
+
+
+#read 2024_CW_watershed.shp file from the Data/Spatial subfolder
+watershed <- st_read("Data/Spatial/2024_CW_watersheds.shp")
+#read CW_boundary_2024.shp file from the Data/Spatial subfolder
+boundary_watershed <- st_read("Data/Spatial/CW_boundary_2024.shp")
+#read kba.20241209051227.shp file from the Data/Spatial subfolder
+kba <- st_read("Data/Spatial/kba.20241209051227.shp")
+#read PECP_estuary_points_rank_2019_public.shp file from the Data/Spatial subfolder
+estuary_point <- st_read("Data/Spatial/PECP_estuary_points_rank_2019_public.shp")
+#read PECP_estuary_poly_rank_2019_PUBLIC.shp file from the Data/Spatial subfolder
+estuary_poly <- st_read("Data/Spatial/PECP_estuary_poly_rank_2019_PUBLIC.shp")
+
+#read the layers within the MidwinterAerialSeabirdSurveys.gdb file from the Data/Spatial subfolder
+midwinter <- st_layers("Data/Spatial/MidwinterAerialSeabirdSurveys.gdb")
+
+#read the layers within the PBHJV_Boundary_08092022.gdb file from the Data/Spatial subfolder
+pbhjv <- st_layers("Data/Spatial/PBHJV_Boundary_08092022.gdb")
+
+
+#Read in the Salish Sea Regional Boundary File
+#Downloaded from here: https://salish-sea-atlas-data-wwu.hub.arcgis.com/
+SS_boundary<-st_read("Data/Spatial/Salish_Sea_Region_Boundary.shp")
+SS_land<-st_read("Data/Spatial/SS_Land.shp")
+
+
 
 ```
 

@@ -773,7 +773,6 @@ tmp0<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(mean, na.
            confidence = "",
            precision_num = "",
            suitability="",
-           precision_cat = ifelse(endpoint_trends$Width_of_Credible_Interval<3.5, "High", ifelse(endpoint_trends$Width_of_Credible_Interval>=3.5 & endpoint_trends$Width_of_Credible_Interval<=6.7, "Medium", "Low")),
            coverage_num = "",
            coverage_cat = "",
            goal = "",
