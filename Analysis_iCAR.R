@@ -520,7 +520,7 @@ for(i in 1:length(sp.list)){
                period ="all years",
                season = "winter",
                results_code = "BCCWS/PSSS",
-               version=, 
+               version= Sys.Date(), 
                species_code = sp.code,
                species_id=sp.id, 
                species_name=species_name,
