@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 --- title: "03_DataAnalysis" format: html editor: visual editor_options: chunk_output_type: console ---
 
 # 3. Analysis {#3.0Analysis}
@@ -17,6 +22,17 @@ sp.data<-read.csv("Data/sp.data.csv")
 #Load your saved events data which is needed for zero-filling
 events<-read.csv("Data/events.csv")
 
+#Create a spatial points layers for graphing results
+loc<-events %>% select(SurveyAreaIdentifier, DecimalLatitude, DecimalLongitude) %>% distinct()
+xy<-st_as_sf(loc, coords = c("DecimalLongitude", "DecimalLatitude"))
+st_crs(xy)<-"+proj=longlat +datum=NAD83"
+
+#Load the Salish Sea Water Polygon for graphing results 
+map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
+#ensure the coordinate reference systems are the same
+mapCRS<-st_crs(map) #get the CRS of the poly data
+xy<-st_transform(xy, mapCRS) #transform 
+
 ```
 
 ## 3.1 Set Analysis Parameters {#3.1Analysis}
@@ -29,11 +45,11 @@ You can choose the continuous space "SPDE" or discrete space "iCAR" method.
 
 ```{r}
 
-model<-"SPDE"
+model<-"iCAR"
 
 ```
 
-If doing an SPDE model, you may define your `area` as "SalishSea", "BCCWS", or "PSSS".
+If doing an SPDE model, you may define your `area` as "SalishSea", "BCCWS", or "PSSS". Only sites with more than 10 years of data will be retained. 
 
 ```{r}
 
@@ -41,41 +57,42 @@ area <- "SalishSea"
 
 ```
 
-If doing an iCAR model, upload the desired spatial polygon for the analysis. We use Watersheds in the Salish Sea Bioregion layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/) as an example.
+If doing an iCAR model, upload the desired spatial polygon for the analysis. We use "Watersheds in the Salish Sea Bioregion" layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/) as an example.
 
 A polygon should have counts in all years to ensure that sampling is complete and consistent. Those that have incomplete time series are removed.
 
 ```{r spatial}
 
-#Load your .shp file saved in the Data/Sptial folder
-poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp")
+#Loading and transformation
+poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp") %>% 
+  st_make_valid()  # Ensure valid geometry
 
-#create your point layer
-loc<-events %>% select(SurveyAreaIdentifier, DecimalLatitude, DecimalLongitude) %>% distinct()
-xy<-st_as_sf(loc, coords = c("DecimalLongitude", "DecimalLatitude"))
-st_crs(xy)<-"+proj=longlat +datum=NAD83"
-
-#ensure the coordinate reference systems are the same
-newCRS<-st_crs(poly) #get the CRS of the poly data
-xy<-st_transform(xy, newCRS) #transform 
+xy <- st_transform(xy, st_crs(poly))  
 Grid <- poly %>% st_filter(xy, .pred = st_intersects) #intersect between point and polygon
-Grid$Name[15]<-"Central Vancover Island" #rename one of the polygons as it is duplicated 
 loc.xy<- st_join(Grid, xy) #add SurveyAreaIdentifier to polygon name
 
 #Visualize your points and polygons before proceeding
 #Load basemap for the Data folder
-map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
-map_sf <- st_transform(map, st_crs(newCRS))
+map_sf <- st_transform(map, st_crs(poly))
 
-ggplot() +
+plot <- ggplot() +
   geom_sf(data = Grid, aes(fill = Name), color = "black") +
   geom_sf(data = map_sf, size = 0.2) +
   geom_sf(data = xy, color = "black", size = 1) +
   theme_minimal()
 
+#Save the plot to your plot.dir folder
+ggsave(
+  filename = file.path(plot.dir, "iCAR_Spatial_Plot.jpeg"),
+  plot = plot,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+
 grid<-loc.xy %>% 
   st_drop_geometry() %>% 
-  select(SurveyAreaIdentifier, Name) %>% #select the name and/or ID associated with your polygon. 
+  select(SurveyAreaIdentifier, Name, AreaSqKm) %>% #select the name and/or ID associated with your polygon. If you have a polygon area field, you can also retain this for area weighted index 
   distinct() %>% 
   mutate(alpha_i = as.integer(factor(Name))) #create the alpha index for the analysis 
 
@@ -121,7 +138,7 @@ diet<-unique(sp.data$Diet)
 family<-unique(sp.data$family_name)
 #view(family)
 
-guild <- "Yes"
+guild <- "No"
 type <-"migration"
 
 ```
@@ -149,9 +166,6 @@ Select the distributional family, and set random and spatial priors, or retain t
 #Here we select 'nbinomal' but this may need to adjust if there is residual overdispersion. 
 
 fam<-'nbinomial'
-
-#Other distribution options to consider
-#fam<-'zeroinflatednbinomial1'
 #fam<-'poisson'
 
 #Priors for the random effects
@@ -185,9 +199,22 @@ output_tables(name, model)
 #Now we can initiate the analysis based on the `model` you previously specified.   
 run_analysis(model)
 
-
 ```
 
 Note that the Dispersion Statistic file in the Output folder should be reviewed after the analysis. If the statistic is \> 10 you should inspect the FitPlots in the Plot directory. In this case we will want to rerun using a different distributional assumption on the counts. This can be done by manually changing the `fam` to Poission and selecting these species to be rerun.
 
 ## 3.3 Results {#3.3Vis}
+
+The analysis calculates trends using both the end point method and a slope through the calculated annual indices of abundance. When mapping the results, the user needs to select which `trend` outputs they would like to view as either "Endpoint" or "Slope". 
+
+```{r}
+
+trend <- "Endpoint"
+
+#Graph your outputs
+graph_results(model, trend)
+
+
+```
+
+

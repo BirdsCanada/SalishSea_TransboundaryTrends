@@ -30,6 +30,11 @@ output_tables <- function(name, model = c("SPDE", "iCAR")) {
               file = file.path(out.dir, paste0(name, "_TrendsEndpoint", suffix)),
               row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
   
+
+  write.table(trends.csv,
+              file = file.path(out.dir, paste0(name, "_TrendsSlope", suffix)),
+              row.names = FALSE, append = FALSE, quote = FALSE, sep = ",")
+  
   # 3. Dispersion Table
   dispersion.csv <- as.data.frame(matrix(data = NA, nrow = 1, ncol = 3))
   names(dispersion.csv) <- c("area_code", "SpeciesCode", "dispersion")

@@ -11,49 +11,6 @@ if(!dir.exists("Output/Plots")) dir.create("Output/Plots")
 
 source("OutputTables.R")
 
-run_analysis <- function(model = c("SPDE", "iCAR")) {
-  model <- match.arg(model)
-  
-  
-  # Source the appropriate analysis script
-  if (model == "SPDE") {
-    source("Analysis_SPDE.R", local = knitr::knit_global())
-  } else if (model == "iCAR") {
-    source("Analysis_iCAR.R", local = knitr::knit_global())
-  }
-  
-  message("Analysis for model '", model, "' has been run.")
-}
-
-compute_dispersion_spatial <- function(M1, Stack, family) {
-  # Extract indices of estimation points from the stack
-  stack_data <- inla.stack.data(Stack)
-  est_indices <- which(!is.na(stack_data$count))  # Identify non-NA responses
-  
-  # Align observed and fitted values
-  observed <- stack_data$count[est_indices]
-  fitted_mean <- M1$summary.fitted.values$mean[est_indices]
-  
-  # Calculate effective parameters
-  p_eff <- M1$dic$p.eff
-  n <- length(observed)
-  
-  # Compute Pearson residuals
-  if(family == "nbinomial") {
-    theta <- M1$summary.hyperpar$mean[1]
-    pearson <- (observed - fitted_mean) / sqrt(fitted_mean * (1 + fitted_mean/theta))
-  } else if(family == "poisson") {
-    pearson <- (observed - fitted_mean) / sqrt(fitted_mean)
-  } else {
-    stop("Family must be 'poisson' or 'nbinomial'")
-  }
-  
-  # Dispersion statistic
-  dispersion_stat <- sum(pearson^2) / (n - p_eff)
-  
-  return(dispersion_stat)
-} 
-
 #Assign directories
 out.dir <- "Output/"
 data.dir <- "Data/"
@@ -88,20 +45,6 @@ sp<-sp %>% distinct(english_name, .keep_all = TRUE)
 
 sp<-sp %>% dplyr::select(species_code, scientific_name, english_name) %>% distinct()
 
-# Function to calculate duration in hours
-calculate_duration <- function(start, end) {
-  # Convert start and end times to total minutes
-  start_minutes <- floor(start) * 60 + round((start - floor(start)) * 60)
-  end_minutes <- floor(end) * 60 + round((end - floor(end)) * 60)
-  
-  # Calculate the duration in minutes
-  duration_minutes <- end_minutes - start_minutes
-  
-  # Convert duration back to hours
-  duration_hours <- duration_minutes / 60
-  
-  return(duration_hours)
-}
 
 utm_crs <- paste0("EPSG:326", sprintf("%02d", 10))
 
@@ -112,14 +55,94 @@ utm_crs <- paste0("EPSG:326", sprintf("%02d", 10))
    "+units=km +no_defs"
  )
 
-##LOESS function
-
-loess_func <- function(i,y){
-  tmp <- loess(i~y, 
-               span=0.55, na.action = na.exclude)
-  preds <- predict(tmp)
-  return(preds)
+run_analysis <- function(model = c("SPDE", "iCAR")) {
+  model <- match.arg(model)
+  
+  
+  # Source the appropriate analysis script
+  if (model == "SPDE") {
+    source("Analysis_SPDE.R", local = knitr::knit_global())
+  } else if (model == "iCAR") {
+    source("Analysis_iCAR.R", local = knitr::knit_global())
+  }
+  
+  message("Analysis for '", model, "'model has been run. Check Output folder for results.")
 }
+
+  graph_results <- function(model = c("SPDE", "iCAR"), trend = c("Endpoint", "Slope")) {
+    model <- match.arg(model)
+    trend <- match.arg(trend)
+  
+  # Source the appropriate analysis script
+  if (model == "SPDE") {
+    source("Graph_SPDE.R", local = knitr::knit_global())
+  } else if (model == "iCAR") {
+    source("Graph_iCAR.R", local = knitr::knit_global())
+  }
+  
+  message("Graph results for '", model, "' model has been run. Check Output/Plot folder for results.")
+}
+
+
+compute_dispersion_SPDE <- function(M1, Stack, family) {
+  # Extract indices of estimation points from the stack
+  stack_data <- inla.stack.data(Stack)
+  est_indices <- which(!is.na(stack_data$count))  # Identify non-NA responses
+  
+  # Align observed and fitted values
+  observed <- stack_data$count[est_indices]
+  fitted_mean <- M1$summary.fitted.values$mean[est_indices]
+  
+  # Calculate effective parameters
+  p_eff <- M1$dic$p.eff
+  n <- length(observed)
+  
+  # Compute Pearson residuals
+  if(family == "nbinomial") {
+    theta <- M1$summary.hyperpar$mean[1]
+    pearson <- (observed - fitted_mean) / sqrt(fitted_mean * (1 + fitted_mean/theta))
+  } else if(family == "poisson") {
+    pearson <- (observed - fitted_mean) / sqrt(fitted_mean)
+  } else {
+    stop("Family must be 'poisson' or 'nbinomial'")
+  }
+  
+  # Dispersion statistic
+  dispersion_stat <- sum(pearson^2) / (n - p_eff)
+  
+  return(dispersion_stat)
+} 
+
+
+#Calculate Dispersion Statistic for INLA Negative Binomial Model
+calculate_dispersion_iCAR <- function(inla_model, observed) {
+  # Extract fitted values
+  mu <- inla_model$summary.fitted.values$mean
+  
+  # Check for negative binomial family and extract theta (size)
+  theta_name <- grep("size for nbinomial", rownames(inla_model$summary.hyperpar), value = TRUE)
+  if (length(theta_name) == 0) {
+    stop("Negative binomial 'size' parameter not found in model. Check family specification.")
+  }
+  theta <- inla_model$summary.hyperpar[theta_name, "mean"]
+  
+  # Pearson residuals for negative binomial
+  pearson_resid <- (observed - mu) / sqrt(mu + (mu^2)/theta)
+  
+  # Effective number of parameters
+  if (!is.null(inla_model$dic$p.eff)) {
+    p_eff <- inla_model$dic$p.eff
+  } else {
+    warning("Effective number of parameters (p.eff) not found; using number of fixed effects instead.")
+    p_eff <- nrow(inla_model$summary.fixed)
+  }
+  
+  # Dispersion statistic
+  N <- length(observed)
+  dispersion <- sum(pearson_resid^2) / (N - p_eff)
+  return(dispersion)
+}
+
 
 #create plot function
 make_plot_field <- function(data_stk, scale_label) {
@@ -145,6 +168,20 @@ make_plot_site <- function(data, scale_label) {
     geom_sf(fill = NA)
 }
 
+# Function to calculate duration in hours
+calculate_duration <- function(start, end) {
+  # Convert start and end times to total minutes
+  start_minutes <- floor(start) * 60 + round((start - floor(start)) * 60)
+  end_minutes <- floor(end) * 60 + round((end - floor(end)) * 60)
+  
+  # Calculate the duration in minutes
+  duration_minutes <- end_minutes - start_minutes
+  
+  # Convert duration back to hours
+  duration_hours <- duration_minutes / 60
+  
+  return(duration_hours)
+}
 
 #Guild default is "No" unless otherwise changed in the setup script
 guild<-"No"

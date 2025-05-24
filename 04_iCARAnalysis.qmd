@@ -4,8 +4,6 @@ format: html
 editor: visual
 ---
 
-
-
 # 4. iCAR Anlysis {#4.0iCAR}
 
 Run setup if starting a new environment.
@@ -27,9 +25,9 @@ events<-read.csv("Data/events.csv")
 
 ## 4.1 Spatial Data {#4.1iCAR}
 
-Here the user will upload the desired spatial polygon for the analysis. We will use as our example the Watersheds in the Salish Sea Bioregion layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/). Sample code is also given for loading a geodatabase. 
+Here the user will upload the desired spatial polygon for the analysis. We will use as our example the Watersheds in the Salish Sea Bioregion layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/). Sample code is also given for loading a geodatabase.
 
-A polygon should have counts in all years to ensure that sampling is complete and consistent. Those that have incomplete time series are removed. 
+A polygon should have counts in all years to ensure that sampling is complete and consistent. Those that have incomplete time series are removed.
 
 ```{r spatial}
 
@@ -73,7 +71,6 @@ events<-left_join(events, grid, by="SurveyAreaIdentifier") %>% st_drop_geometry(
 events<-events %>% drop_na(Name)
 
 ```
-
 
 ## 4.2 Set Analysis Parameters {#4.2iCAR}
 
@@ -175,8 +172,6 @@ source("Graph_iCAR.R")
 
 ```
 
-
-
 ```{r}
 
 #Get the British Columbia, Canada and Washington, US shapefiles from the naturalearth package. 
@@ -225,4 +220,3 @@ SS_land<-st_read("Data/Spatial/SS_Land.shp")
 
 
 ```
-

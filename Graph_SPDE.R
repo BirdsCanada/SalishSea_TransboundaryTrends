@@ -1,38 +1,52 @@
-all.trends<-read.csv(paste(out.dir, name, "_TrendsEndPoint_SPDE.csv", sep=""))
-all.trends<-all.trends %>% drop_na(results_code)
+# Read trend data and clean
 
-map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
-events_sf <- st_transform(map, st_crs(Grid))
+if (trend == "Endpoint") {
+  all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsEndPoint_SPDE.csv"))) %>% 
+    drop_na(results_code) %>% 
+    select(area_code, species_code, trnd)
+} else if (trend == "Slope") {
+  all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsSlope_SPDE.csv"))) %>% 
+    drop_na(results_code) %>% 
+    select(area_code, species_code, trnd)
+}
 
+# Ensure xy and map are sf objects with correct CRS
+if(!inherits(xy, "sf")) stop("xy must be an sf object")
+if(!inherits(map, "sf")) stop("map must be an sf object")
 
 # Create individual maps for each species and save them
 species_list3 <- unique(all.trends$species_code)
+
 for(current_sp in species_list3) {
   # Filter data for current species
   species_data <- all.trends %>% 
     filter(species_code == current_sp)
   
-  # Join with spatial grid
-  Grid_sp <- Grid %>%
-    left_join(species_data, by = c("Name" = "area_code"))
+  # Join spatial data with trend data
+  Grid_sp <- left_join(xy, species_data, by = c("SurveyAreaIdentifier" = "area_code"))
   
-  # Calculate species-specific limits
-  species_min <- min(species_data$trnd, na.rm = TRUE)
-  species_max <- max(species_data$trnd, na.rm = TRUE)
+  # Calculate percentiles to exclude extreme outliers
+  lower_lim <- quantile(Grid_sp$trnd, 0.025, na.rm = TRUE)
+  upper_lim <- quantile(Grid_sp$trnd, 0.975, na.rm = TRUE)
   
-  # Create map with dynamic scale
+  # Create diverging color scale centered at 0
+  max_abs <- max(abs(c(lower_lim, upper_lim)))
+  
   p <- ggplot() +
-    geom_sf(data = Grid_sp, aes(fill = trnd), color = "white", size = 0.1) +
-    scale_fill_viridis_c(
-      name = "Annual Trends", 
-      limits = c(species_min, species_max),  # Now species-specific
-      na.value = "grey90"  # Handle NA values
+    geom_sf(data = Grid_sp, aes(fill = trnd), size = 2, shape = 21, color = "black") +
+    scale_fill_gradient2(
+      name = "Annual Trends (%)",
+      low = "blue", mid = "white", high = "red",
+      midpoint = 0,
+      limits = c(-max_abs, max_abs),
+      na.value = "grey90"
     ) +
-    geom_sf(data = map, size = 0.2) +
-    labs(title = paste("Trends for", current_sp)) +
-    theme_minimal()
+    geom_sf(data = map, fill = NA, color = "grey30", size = 0.2) +
+    labs(title = paste("Annual Trends for", current_sp)) +
+    theme_minimal() +
+    theme(legend.position = "right")
   
   # Save map
-  ggsave(paste0(plot.dir, "iCAR_Map_", gsub(" ", "_", current_sp), ".jpeg"), 
+  ggsave(filename = file.path(plot.dir, paste0(trend, "_SPDE_Map_", gsub(" ", "_", current_sp), ".jpeg")), 
          plot = p, width = 8, height = 6, dpi = 300)
 }
