@@ -159,9 +159,6 @@ for(i in 1:length(sp.list)){
         slice_max(ObservationCount, n = 1, with_ties = FALSE) %>%
         ungroup()
       
-      #Calculate sample size per polygon alpha_i
-      sample_size<-dat %>% group_by(alpha_i) %>% summarise(sample_size=n_distinct(SurveyAreaIdentifier))
-      
       #Last, remove alpha_i with incomplete sampling over all years. 
       #Indicates that the polygon is not well sampled for a given species and end point trend may not work
       period_num = Y2-Y1 
@@ -263,6 +260,12 @@ for(i in 1:length(sp.list)){
   
       ##Remove polygons with no survey sites
       cells_with_counts <- unique(dat$alpha_i[which(!is.na(dat$ObservationCount))]) 
+     
+      # Filter dat to only those alpha_i, then calculate sample size per polygon
+      sample_size <- dat %>%
+        filter(alpha_i %in% cells_with_counts) %>%
+        group_by(alpha_i) %>%
+        summarise(sample_size = n_distinct(SurveyAreaIdentifier), .groups = "drop")
       
       #Calculate Posterior estimate of abundance
       nsamples<- 100
@@ -425,7 +428,7 @@ for(i in 1:length(sp.list)){
                coverage_cat = "",
                goal = "",
                goal_lower = "",
-               #sample_size = sample_size,
+               sample_size = sample_size$sample_size,
                sample_size_units="Number of Sites",
                sample_total = "",
                subtitle = "",
@@ -543,7 +546,7 @@ for(i in 1:length(sp.list)){
                coverage_cat = "",
                goal = "",
                goal_lower = "",
-               sample_size = sample_size,
+               sample_size = sample_size$sample_size,
                sample_size_units="Number of Sites",
                sample_total = "",
                subtitle = "",
