@@ -72,7 +72,7 @@ Grid <- poly %>% st_filter(xy, .pred = st_intersects) #intersect between point a
 loc.xy<- st_join(Grid, xy) #add SurveyAreaIdentifier to polygon name
 
 #Visualize your points and polygons before proceeding
-#Load basemap for the Data folder
+
 map_sf <- st_transform(map, st_crs(poly))
 
 plot <- ggplot() +
@@ -80,6 +80,8 @@ plot <- ggplot() +
   geom_sf(data = map_sf, size = 0.2) +
   geom_sf(data = xy, color = "black", size = 1) +
   theme_minimal()
+
+plot
 
 #Save the plot to your plot.dir folder
 ggsave(
@@ -94,12 +96,85 @@ grid<-loc.xy %>%
   st_drop_geometry() %>% 
   select(SurveyAreaIdentifier, Name, AreaSqKm) %>% #select the name and/or ID associated with your polygon. If you have a polygon area field, you can also retain this for area weighted index 
   distinct() %>% 
-  mutate(alpha_i = as.integer(factor(Name))) #create the alpha index for the analysis 
+  mutate(Name = Name, #Rename your polygon name field
+         Area = AreaSqKm,#Rename your area field 
+         alpha_i = as.integer(factor(Name)) #create the alpha index for the analysis 
+         ) 
 
 #joint to your events layer
 events<-left_join(events, grid, by="SurveyAreaIdentifier") %>% st_drop_geometry()
 #remove the areas that fall outside the polygons
 events<-events %>% drop_na(Name)
+
+```
+
+```{r}
+#Load polygon shapefile
+poly <- st_read(polygon_shp) %>% st_make_valid()
+
+#List available fields for user selection
+cat("Polygon data fields:\n")
+print(names(poly))
+
+#Prompt user to select polygon ID and area fields
+polygon_id_field <- #Enter the field name for polygon ID (e.g., 'WatershedID')
+area_field <- #Enter the field name for area (or leave blank if none)
+
+#Rename fields to 'Name' and 'Area', create area if missing
+poly <- poly %>%
+  rename(Name = !!polygon_id_field) %>%
+  mutate(
+    Area = if (area_field != "") !!sym(area_field) else 1
+  )
+
+# ---- POINTS PROCESSING ----
+
+xy <- st_transform(xy, st_crs(poly))
+
+# ---- SPATIAL FILTERING ----
+
+Grid <- poly %>% st_filter(xy, .pred = st_intersects)
+loc.xy <- st_join(Grid, xy)
+
+# ---- VISUALIZATION ----
+
+plot <- ggplot() +
+  geom_sf(data = Grid, aes(fill = Name), color = "black") +
+  geom_sf(data = poly, size = 0.2, fill = NA) +
+  geom_sf(data = xy, color = "black", size = 1) +
+  theme_minimal()
+
+print(plot)
+
+# Save plot
+if (!dir.exists(plot_dir)) dir.create(plot_dir)
+ggsave(
+  filename = file.path(plot_dir, "iCAR_Spatial_Plot.jpeg"),
+  plot = plot,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+
+# ---- GRID TABLE PREP ----
+
+grid <- loc.xy %>%
+  st_drop_geometry() %>%
+  select(SurveyAreaIdentifier, Name, Area) %>%
+  distinct() %>%
+  mutate(
+    alpha_i = as.integer(factor(Name))
+  )
+
+# ---- EVENT JOINING ----
+
+# events <- ... # Load your events data here!
+# events <- left_join(events, grid, by = "SurveyAreaIdentifier") %>% drop_na(Name)
+
+# ---- END ----
+
+cat("Processing complete! Fields standardized as 'Name' and 'Area'.\n")
+
 
 ```
 

@@ -688,6 +688,8 @@ tmp0<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(mean, na.
               sep = ",", 
               col.names = FALSE)  
   
+  
+  
   } #end nrow data 
   } #end min.data  
   } #end SpeciesLoop

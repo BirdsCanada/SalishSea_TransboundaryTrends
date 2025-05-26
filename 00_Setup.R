@@ -114,13 +114,13 @@ compute_dispersion_SPDE <- function(M1, Stack, family) {
 } 
 
 
-#Calculate Dispersion Statistic for INLA Negative Binomial Model
+#Calculate Dispersion Statistic for iCAR Negative Binomial Model
 calculate_dispersion_iCAR <- function(inla_model, observed) {
   # Extract fitted values
   mu <- inla_model$summary.fitted.values$mean
   
   # Check for negative binomial family and extract theta (size)
-  theta_name <- grep("size for nbinomial", rownames(inla_model$summary.hyperpar), value = TRUE)
+  theta_name <- grep("size for the nbinomial", rownames(inla_model$summary.hyperpar), value = TRUE)
   if (length(theta_name) == 0) {
     stop("Negative binomial 'size' parameter not found in model. Check family specification.")
   }

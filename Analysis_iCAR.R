@@ -428,7 +428,6 @@ for(i in 1:length(sp.list)){
                coverage_cat = "",
                goal = "",
                goal_lower = "",
-               sample_size = sample_size$sample_size,
                sample_size_units="Number of Sites",
                sample_total = "",
                subtitle = "",
@@ -546,7 +545,6 @@ for(i in 1:length(sp.list)){
                coverage_cat = "",
                goal = "",
                goal_lower = "",
-               sample_size = sample_size$sample_size,
                sample_size_units="Number of Sites",
                sample_total = "",
                subtitle = "",
@@ -567,6 +565,8 @@ for(i in 1:length(sp.list)){
                trend_id = "",
                upload_dt = "")
       
+      trend.out<-left_join(trend.out, sample_size, by="alpha_i")
+      
       write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
       
       write.table(write.trend, 
@@ -579,13 +579,8 @@ for(i in 1:length(sp.list)){
      
       
       ###Area weighted indices full study area###
-      # Step 1: Merge indices with area data
-      tmp1_area <- tmp1 %>%
-        left_join(grid %>% select(alpha_i, AreaSqKm), by = "alpha_i") %>%
-        group_by(wyear)
-      
-      # Step 2: Calculate area-weighted indices for each simulation
-      area_weighted_indices <- tmp1_area %>%
+      #Calculate area-weighted indices for each simulation
+      area_weighted_indices <- tmp1 %>% group_by(wyear) %>% 
         # Multiply each simulation's index by stratum area
         mutate(across(starts_with("V"), ~ . * AreaSqKm)) %>%
         # Sum across all strata and divide by total area
@@ -597,8 +592,6 @@ for(i in 1:length(sp.list)){
                                           upper_ci=quantile(c_across(starts_with("V")), 0.975), 
                                           stdev=sd(c_across(starts_with("V"))), 
                                           stderr = stdev / sqrt(nsamples))  
-      
-     
       
     
       #Assign data to output table 
@@ -687,7 +680,7 @@ for(i in 1:length(sp.list)){
       
       #write output to table
       trend.out<-NULL
-      trend.out <- trend_summary %>%
+      trend.out <- final_trend %>%
         mutate(model_type="ALPHA SPATIAL iCAR", 
                model_family = fam,
                index_type="Endpoint Trend",
