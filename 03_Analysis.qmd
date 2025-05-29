@@ -29,6 +29,7 @@ st_crs(xy)<-"+proj=longlat +datum=NAD83"
 
 #Load the Salish Sea Water Polygon for graphing results 
 map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
+
 #ensure the coordinate reference systems are the same
 mapCRS<-st_crs(map) #get the CRS of the poly data
 xy<-st_transform(xy, mapCRS) #transform 
@@ -46,6 +47,7 @@ You can choose the continuous space "SPDE" or discrete space "iCAR" method.
 ```{r}
 
 model<-"iCAR"
+#model<-"SPDE"
 
 ```
 
@@ -54,90 +56,41 @@ If doing an SPDE model, you may define your `area` as "SalishSea", "BCCWS", or "
 ```{r}
 
 area <- "SalishSea"
-
+#area <- "BCCWS"
+#area <- "PSSS"
 ```
 
 If doing an iCAR model, upload the desired spatial polygon for the analysis. We use "Watersheds in the Salish Sea Bioregion" layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/) as an example.
 
 A polygon should have counts in all years to ensure that sampling is complete and consistent. Those that have incomplete time series are removed.
 
-```{r spatial}
-
-#Loading and transformation
-poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp") %>% 
-  st_make_valid()  # Ensure valid geometry
-
-xy <- st_transform(xy, st_crs(poly))  
-Grid <- poly %>% st_filter(xy, .pred = st_intersects) #intersect between point and polygon
-loc.xy<- st_join(Grid, xy) #add SurveyAreaIdentifier to polygon name
-
-#Visualize your points and polygons before proceeding
-
-map_sf <- st_transform(map, st_crs(poly))
-
-plot <- ggplot() +
-  geom_sf(data = Grid, aes(fill = Name), color = "black") +
-  geom_sf(data = map_sf, size = 0.2) +
-  geom_sf(data = xy, color = "black", size = 1) +
-  theme_minimal()
-
-plot
-
-#Save the plot to your plot.dir folder
-ggsave(
-  filename = file.path(plot.dir, "iCAR_Spatial_Plot.jpeg"),
-  plot = plot,
-  width = 8,
-  height = 6,
-  dpi = 300
-)
-
-grid<-loc.xy %>% 
-  st_drop_geometry() %>% 
-  select(SurveyAreaIdentifier, Name, AreaSqKm) %>% #select the name and/or ID associated with your polygon. If you have a polygon area field, you can also retain this for area weighted index 
-  distinct() %>% 
-  mutate(Name = Name, #Rename your polygon name field
-         Area = AreaSqKm,#Rename your area field 
-         alpha_i = as.integer(factor(Name)) #create the alpha index for the analysis 
-         ) 
-
-#joint to your events layer
-events<-left_join(events, grid, by="SurveyAreaIdentifier") %>% st_drop_geometry()
-#remove the areas that fall outside the polygons
-events<-events %>% drop_na(Name)
-
-```
 
 ```{r}
 #Load polygon shapefile
-poly <- st_read(polygon_shp) %>% st_make_valid()
+#poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp") %>% st_make_valid()
+poly <- st_read("Data/Spatial/BC_WA_Merged_Polygon.shp") %>% st_make_valid()
+
+#Check that your polygon is valid
+st_is_valid(poly)
 
 #List available fields for user selection
-cat("Polygon data fields:\n")
 print(names(poly))
 
 #Prompt user to select polygon ID and area fields
-polygon_id_field <- #Enter the field name for polygon ID (e.g., 'WatershedID')
-area_field <- #Enter the field name for area (or leave blank if none)
+polygon_id_field <- "name" #Enter the field name for polygon ID (e.g., 'WatershedID')
+area_field <- "" #Enter the field name for area (or leave blank if none)
 
-#Rename fields to 'Name' and 'Area', create area if missing
+#Rename fields to 'Name' and 'Area'. If polygon area is missing, this will be created and assigned to 1. Analytically, this means the "Study Area" trend will be equally weighted across all polygons. 
 poly <- poly %>%
   rename(Name = !!polygon_id_field) %>%
-  mutate(
-    Area = if (area_field != "") !!sym(area_field) else 1
-  )
+  mutate(Area = if (area_field != "") .data[[area_field]] else 1)
 
-# ---- POINTS PROCESSING ----
-
+#Spatially filter the point to those that are within each polygon
 xy <- st_transform(xy, st_crs(poly))
-
-# ---- SPATIAL FILTERING ----
-
-Grid <- poly %>% st_filter(xy, .pred = st_intersects)
+Grid <- poly %>% st_filter(xy, .predicate = st_intersects)
 loc.xy <- st_join(Grid, xy)
 
-# ---- VISUALIZATION ----
-
+#Visualize
 plot <- ggplot() +
   geom_sf(data = Grid, aes(fill = Name), color = "black") +
   geom_sf(data = poly, size = 0.2, fill = NA) +
@@ -146,8 +99,6 @@ plot <- ggplot() +
 
 print(plot)
 
-# Save plot
-if (!dir.exists(plot_dir)) dir.create(plot_dir)
 ggsave(
   filename = file.path(plot_dir, "iCAR_Spatial_Plot.jpeg"),
   plot = plot,
@@ -156,8 +107,7 @@ ggsave(
   dpi = 300
 )
 
-# ---- GRID TABLE PREP ----
-
+#Create the grid table that links the polygon ID to the SurveyAreaIdentifier
 grid <- loc.xy %>%
   st_drop_geometry() %>%
   select(SurveyAreaIdentifier, Name, Area) %>%
@@ -166,15 +116,8 @@ grid <- loc.xy %>%
     alpha_i = as.integer(factor(Name))
   )
 
-# ---- EVENT JOINING ----
-
-# events <- ... # Load your events data here!
-# events <- left_join(events, grid, by = "SurveyAreaIdentifier") %>% drop_na(Name)
-
-# ---- END ----
-
-cat("Processing complete! Fields standardized as 'Name' and 'Area'.\n")
-
+#Joint to your events layer and drop survey points outside the polygon
+events <- left_join(events, grid, by = "SurveyAreaIdentifier") %>% drop_na(Name)
 
 ```
 
@@ -213,8 +156,8 @@ diet<-unique(sp.data$Diet)
 family<-unique(sp.data$family_name)
 #view(family)
 
-guild <- "No"
-type <-"migration"
+guild <- "Yes"
+type <-"family"
 
 ```
 
@@ -264,7 +207,7 @@ You are ready to start your analysis! The analysis will write results to the fil
 
 #Give your analytically output file a unique name (e.g., BCCWS_Species, SalishSea_migration, Watershed_Species), 
 
-name<-"SalishSea_Species"
+name<-"Watershed_Family"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 
@@ -287,7 +230,7 @@ The analysis calculates trends using both the end point method and a slope throu
 trend <- "Endpoint"
 
 #Graph your outputs
-graph_results(model, trend)
+graph_results(model, trend, name = "Watershed_Family")
 
 
 ```

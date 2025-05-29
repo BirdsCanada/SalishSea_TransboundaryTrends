@@ -44,3 +44,68 @@ output_tables <- function(name, model = c("SPDE", "iCAR")) {
   
   message("Output tables created for model: ", model)
 }
+
+
+# 
+# indices_template <- data.frame(
+#   results_code = "BCCWS/PSSS",
+#   version = Sys.Date(),
+#   area_code = NA_character_,
+#   season = "Winter",
+#   period = "all years",
+#   species_code = NA_character_,
+#   species_id = NA_character_,
+#   year = NA_integer_,
+#   index = NA_real_,
+#   stderr = NA_real_,
+#   stdev = NA_real_,
+#   upper_ci = NA_real_,
+#   lower_ci = NA_real_,
+#   LOESS_index = NA_real_,
+#   trend_index = "",
+#   stringsAsFactors = FALSE
+# )
+# 
+# 
+# trend_template <- data.frame(
+#   results_code = "BCCWS/PSSS",
+#   version = Sys.Date(),
+#   area_code = NA_character_,
+#   season = "winter",
+#   period = "all years",
+#   species_code = NA_character_,
+#   species_id = NA_character_,
+#   years = NA_character_,
+#   year_start = NA_integer_,
+#   year_end = NA_integer_,
+#   trnd = NA_real_,
+#   lower_ci = NA_real_,
+#   upper_ci = NA_real_,
+#   index_type = NA_character_,
+#   stderr = NA_real_,
+#   model_type = model_type,
+#   model_fit = "",
+#   percent_change = NA_real_,
+#   percent_change_low = "",
+#   percent_change_high = "",
+#   prob_decrease_0 = "",
+#   prob_decrease_25 = "",
+#   prob_decrease_30 = "",
+#   prob_decrease_50 = "",
+#   prob_increase_0 = "",
+#   prob_increase_33 = "",
+#   prob_increase_100 = "",
+#   suitability = "",
+#   precision_num = "",
+#   precision_cat = NA_character_,
+#   coverage_num = "",
+#   coverage_cat = "",
+#   sample_size = NA_integer_,
+#   sample_size_units = "Number of Sites",
+#   prob_LD = "",
+#   prob_MD = "",
+#   prob_LC = "",
+#   prob_MI = "",
+#   prob_LI = "",
+#   stringsAsFactors = FALSE
+# )

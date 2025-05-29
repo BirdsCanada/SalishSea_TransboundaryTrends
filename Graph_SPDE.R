@@ -47,6 +47,6 @@ for(current_sp in species_list3) {
     theme(legend.position = "right")
   
   # Save map
-  ggsave(filename = file.path(plot.dir, paste0(trend, "_SPDE_Map_", gsub(" ", "_", current_sp), ".jpeg")), 
+  ggsave(filename = file.path(plot.dir, paste0(trend, "_SPDE_", name, gsub(" ", "_", current_sp), ".jpeg")), 
          plot = p, width = 8, height = 6, dpi = 300)
 }

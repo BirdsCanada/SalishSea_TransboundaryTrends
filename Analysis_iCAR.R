@@ -222,9 +222,9 @@ for(i in 1:length(sp.list)){
        # Append to dispersion file
        
        dispersion_entry <- data.frame(
-         area_code = area,
+         area_code = name,
          SpeciesCode = sp.list[i],
-         dispersion = disp
+         dispersion = Dispersion1
        )
        
        write.table(dispersion_entry,
@@ -250,7 +250,7 @@ for(i in 1:length(sp.list)){
         theme_minimal(base_size = 14)
       
       ggsave(
-        filename = file.path(plot.dir, paste0(area, sp.list[i], "_FitPlot_iCAR.jpeg")),
+        filename = file.path(plot.dir, paste0(name, sp.list[i], "_FitPlot_iCAR.jpeg")),
         plot = d,
         width = 8,
         height = 6,
@@ -291,7 +291,7 @@ for(i in 1:length(sp.list)){
       
       #link back this the site name using the grid_key
       grid3<-grid %>% st_drop_geometry() %>% 
-        select(alpha_i, Name, AreaSqKm) %>% 
+        select(alpha_i, Name, Area) %>% 
         mutate(area_code = Name) %>% 
         distinct()
       
@@ -497,7 +497,8 @@ for(i in 1:length(sp.list)){
           trnd = median(percent_trend),
           lower_ci = quantile(percent_trend, 0.025),
           upper_ci = quantile(percent_trend, 0.975), 
-          sd = sd(percent_trend, na.rm=TRUE)
+          sd = sd(percent_trend, na.rm=TRUE), 
+          stderr = sd / sqrt(nsamples)
         ) %>%
         mutate(
           index_type = "Slope Trend", 
@@ -527,7 +528,6 @@ for(i in 1:length(sp.list)){
                species_id=sp.id, 
                species_name=species_name,
                species_sci_name=species_sci_name,
-               stderr = "",
                model_fit = "", 	
                percent_change_low ="", 
                percent_change_high = "",
@@ -582,9 +582,9 @@ for(i in 1:length(sp.list)){
       #Calculate area-weighted indices for each simulation
       area_weighted_indices <- tmp1 %>% group_by(wyear) %>% 
         # Multiply each simulation's index by stratum area
-        mutate(across(starts_with("V"), ~ . * AreaSqKm)) %>%
+        mutate(across(starts_with("V"), ~ . * Area)) %>%
         # Sum across all strata and divide by total area
-        summarise(across(starts_with("V"), ~ sum(.) / sum(AreaSqKm))) %>%
+        summarise(across(starts_with("V"), ~ sum(.) / sum(Area))) %>%
         arrange(wyear)
       
       tmp2_area<-area_weighted_indices %>% rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
@@ -611,7 +611,6 @@ for(i in 1:length(sp.list)){
         error="",
         #Assing missing data fields 
         upload_id="",
-        stderr="",
         trend_id="",
         smooth_upper_ci="",
         smooth_lower_ci="",
@@ -651,8 +650,8 @@ for(i in 1:length(sp.list)){
                   sep = ",", 
                   col.names = FALSE)
       
-      Y1 <- min(tmp1_area$wyear)  # First year
-      Y2 <- max(tmp1_area$wyear)  # Last year
+      Y1 <- min(tmp2_area$wyear)  # First year
+      Y2 <- max(tmp2_area$wyear)  # Last year
       
       trend_calculations <- area_weighted_indices %>%
         pivot_longer(cols = starts_with("V"), names_to = "sim", values_to = "index") %>%
@@ -667,7 +666,8 @@ for(i in 1:length(sp.list)){
           trnd = median(trend),
           lower_ci = quantile(trend, 0.025),
           upper_ci = quantile(trend, 0.975),
-          stdev = sd(trend)
+          stdev = sd(trend), 
+          stderr = stdev / sqrt(nsamples)
         ) %>% mutate(
         Width_of_Credible_Interval = upper_ci - lower_ci,
         precision_cat = case_when(
@@ -681,7 +681,7 @@ for(i in 1:length(sp.list)){
       #write output to table
       trend.out<-NULL
       trend.out <- final_trend %>%
-        mutate(model_type="ALPHA SPATIAL iCAR", 
+        mutate(model_type="iCAR ALPHA SPATIAL", 
                model_family = fam,
                index_type="Endpoint Trend",
                years = paste(Y1, "-", Y2, sep = ""),
@@ -696,7 +696,6 @@ for(i in 1:length(sp.list)){
                species_id=sp.id, 
                species_name=species_name,
                species_sci_name=species_sci_name,
-               stderr = "",
                model_fit = "", 	
                percent_change_low ="", 
                percent_change_high = "",

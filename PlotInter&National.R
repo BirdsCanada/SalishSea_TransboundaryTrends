@@ -1,17 +1,19 @@
+#This code no longer works. 
+
 #Combining the International and National Data Outputs for inspection and comparison
 
 sp.tax<-sp.tax %>% dplyr::select(species_id, sort_order, english_name)
 
 #read indices and trends for a specific site
 
-site.list<-c("SalishSea", "BCCWS", "PSSS")
+# site.list<-c("SalishSea", "BCCWS", "PSSS")
+# 
+# #create site loop
+# for(m in 1:length(site.list)){ 
 
-#create site loop
-for(m in 1:length(site.list)){ 
-
-indices<-read.csv(paste(out.dir, site.list[m], "_AnnualIndices.csv", sep=""))
-trends.slope<-read.csv(paste(out.dir, site.list[m], "_TrendsSlope.csv", sep=""))
-trends.endpt<-read.csv(paste(out.dir, site.list[m], "_TrendsEndPoint.csv", sep=""))
+indices<-read.csv(paste(out.dir, name, "_AnnualIndices_iCAR.csv", sep=""))
+trends.slope<-read.csv(paste(out.dir, name, "_TrendsSlope_iCAR.csv", sep=""))
+trends.endpt<-read.csv(paste(out.dir, name, "_TrendsEndPoint_iCAR.csv", sep=""))
 
 ##Prepare trends for plotting
 all.trends<-rbind(trends.slope, trends.endpt)
@@ -20,10 +22,10 @@ all.trends <- all.trends[rowSums(is.na(all.trends)) < ncol(all.trends), ]
 all.trends<-all.trends %>% dplyr::select(area_code, period, species_code, species_id, years, trnd, lower_ci, upper_ci, index_type, percent_change) %>% filter(period=="all years")
 all.trends<-left_join(all.trends, sp.tax, by=c("species_id"="species_id"))
 
-end.trnd<-all.trends %>% filter(index_type==plot.type)
+end.trnd<-all.trends %>% filter(index_type=="Endpoint Trend")
 
 ed.trnd <- end.trnd %>%
-  mutate(sp.trnd = paste(site.list[m], " ", round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
+  mutate(sp.trnd = paste(area_code, " ", round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
 ed.trnd <- ed.trnd %>% dplyr::select(species_id, sp.trnd)
 
 #Prepare Indices for plotting
@@ -31,10 +33,9 @@ indices <- indices[rowSums(is.na(indices)) < ncol(indices), ]
 index <- indices %>%
   dplyr::select(index, upper_ci, lower_ci, LOESS_index, species_id, year, season, area_code) 
 
-plot_name<-paste(site.list[m], ".plot", sep="")
+plot_name<-paste(area_code, ".plot", sep="")
 assign(plot_name, full_join(index, ed.trnd, by = c("species_id"), relationship = "many-to-many"))
 
-} #end site loop
 
 #Combine the plot_name sites into one dataframe
 plot.dat<-rbind(SalishSea.plot, BCCWS.plot, PSSS.plot)

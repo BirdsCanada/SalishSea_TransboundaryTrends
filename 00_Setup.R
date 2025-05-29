@@ -69,9 +69,13 @@ run_analysis <- function(model = c("SPDE", "iCAR")) {
   message("Analysis for '", model, "'model has been run. Check Output folder for results.")
 }
 
-  graph_results <- function(model = c("SPDE", "iCAR"), trend = c("Endpoint", "Slope")) {
+  graph_results <- function(model = c("SPDE", "iCAR"), trend = c("Endpoint", "Slope"), name) {
     model <- match.arg(model)
     trend <- match.arg(trend)
+    
+    # Make 'name' available to sourced scripts
+    assign("name", name, envir = knitr::knit_global())
+    
   
   # Source the appropriate analysis script
   if (model == "SPDE") {
@@ -80,7 +84,7 @@ run_analysis <- function(model = c("SPDE", "iCAR")) {
     source("Graph_iCAR.R", local = knitr::knit_global())
   }
   
-  message("Graph results for '", model, "' model has been run. Check Output/Plot folder for results.")
+    message("Graph results for '", model, "' model (", name, ") have been run. Check Output/Plot folder for results.")
 }
 
 
@@ -144,29 +148,29 @@ calculate_dispersion_iCAR <- function(inla_model, observed) {
 }
 
 
-#create plot function
-make_plot_field <- function(data_stk, scale_label) {
-  ggplot(map) +
-    geom_sf(fill = NA) +
-    coord_sf(datum = NA) +
-    geom_spatraster(data = data_stk) +
-    labs(x = "", y = "") +
-    scale_fill_distiller(scale_label,
-                         palette = "Spectral",
-                         na.value = "transparent") +
-    theme_bw() +
-    geom_sf(fill = NA)
-}
-make_plot_site <- function(data, scale_label) {
-  ggplot(map) +
-    geom_sf() +
-    coord_sf(datum = NA) +
-    geom_sf(data = data, size = 1, mapping = aes(colour = value)) +
-    scale_colour_distiller(scale_label, palette = "Spectral") +
-    labs(x = "", y = "") +
-    theme_bw() +
-    geom_sf(fill = NA)
-}
+# #create plot function
+# make_plot_field <- function(data_stk, scale_label) {
+#   ggplot(map) +
+#     geom_sf(fill = NA) +
+#     coord_sf(datum = NA) +
+#     geom_spatraster(data = data_stk) +
+#     labs(x = "", y = "") +
+#     scale_fill_distiller(scale_label,
+#                          palette = "Spectral",
+#                          na.value = "transparent") +
+#     theme_bw() +
+#     geom_sf(fill = NA)
+# }
+# make_plot_site <- function(data, scale_label) {
+#   ggplot(map) +
+#     geom_sf() +
+#     coord_sf(datum = NA) +
+#     geom_sf(data = data, size = 1, mapping = aes(colour = value)) +
+#     scale_colour_distiller(scale_label, palette = "Spectral") +
+#     labs(x = "", y = "") +
+#     theme_bw() +
+#     geom_sf(fill = NA)
+# }
 
 # Function to calculate duration in hours
 calculate_duration <- function(start, end) {
@@ -217,10 +221,10 @@ guild<-"No"
 # 
 # st_write(water_buffer, "Data/Spatial/Salish_Sea_Water_Polygon.shp")
 # 
-# canada <- ne_states(country = "canada", returnclass = "sf") 
+# canada <- ne_states(country = "canada", returnclass = "sf")
 # BC<- canada[canada$name=="British Columbia",]
 # 
-# us<- ne_states(country = "united states of america", returnclass = "sf") 
+# us<- ne_states(country = "united states of america", returnclass = "sf")
 # WA<- us[us$name=="Washington",]
 # 
 # # Ensure both layers use the same CRS
@@ -240,5 +244,11 @@ guild<-"No"
 # # Clip the water polygon to BC
 # map_WA <- st_intersection(map, WA)
 # st_write(map_WA, "Data/Spatial/WA_Water_Polygon.shp", layer_options = "ENCODING=UTF-8")
-
-
+# 
+# # Combine the two polygons into one sf object
+# bc_wa <- rbind(BC, WA)
+# 
+# 
+# st_write(bc_wa, "Data/Spatial/BC_WA_Merged_Polygon.shp", layer_options = "ENCODING=UTF-8")
+# 
+# plot(bc_wa)

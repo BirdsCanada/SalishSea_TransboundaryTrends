@@ -28,7 +28,7 @@ for(current_sp in species_list3) {
       name = "Annual Trends (%)",
       low = "blue", mid = "white", high = "red",
       midpoint = 0,
-      limits = c(-max_abs, max_abs),
+     # limits = c(-max_abs, max_abs),
       na.value = "grey90"
     ) +
     geom_sf(data = map, fill = NA, color = "grey30", size = 0.2) +
@@ -38,7 +38,7 @@ for(current_sp in species_list3) {
   
   # Save map
   ggsave(
-    filename = file.path(plot.dir, paste0("iCAR_Map_", gsub(" ", "_", current_sp), ".jpeg")),
+    filename = file.path(plot.dir, paste0("iCAR_", name, gsub(" ", "_", current_sp), ".jpeg")),
     plot = p,
     width = 8,
     height = 6,
