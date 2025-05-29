@@ -1,5 +1,8 @@
 # Read trend data and clean
 
+#Default trend == Endpoint
+trend<-"Endpoint"
+
 if (trend == "Endpoint") {
   all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsEndPoint_SPDE.csv"))) %>% 
     drop_na(results_code) %>% 

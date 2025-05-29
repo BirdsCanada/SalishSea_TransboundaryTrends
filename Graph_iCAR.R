@@ -1,3 +1,6 @@
+#Default trend == Endpoint
+trend<-"Endpoint"
+
 # Read and clean iCAR trend data
 all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsEndPoint_iCAR.csv"))) %>%
   drop_na(results_code) %>%
@@ -13,8 +16,10 @@ for(current_sp in species_list3) {
   # Filter data for current species
   species_data <- all.trends %>% filter(species_code == current_sp)
   
-  # Join with spatial grid
+  # Join and clip
   Grid_sp <- Grid %>% left_join(species_data, by = c("Name" = "area_code"))
+  Grid_sp_clipped <- sf::st_intersection(Grid_sp, map)
+  
   
   # Calculate percentiles for robust color scaling
   lower_lim <- quantile(Grid_sp$trnd, 0.025, na.rm = TRUE)
@@ -23,7 +28,7 @@ for(current_sp in species_list3) {
   
   # Create diverging color scale centered at 0
   p <- ggplot() +
-    geom_sf(data = Grid_sp, aes(fill = trnd), color = "white", size = 0.1) +
+    geom_sf(data = Grid_sp_clipped, aes(fill = trnd), color = "white", size = 0.1) +
     scale_fill_gradient2(
       name = "Annual Trends (%)",
       low = "blue", mid = "white", high = "red",

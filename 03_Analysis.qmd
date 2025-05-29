@@ -67,8 +67,8 @@ A polygon should have counts in all years to ensure that sampling is complete an
 
 ```{r}
 #Load polygon shapefile
-#poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp") %>% st_make_valid()
-poly <- st_read("Data/Spatial/BC_WA_Merged_Polygon.shp") %>% st_make_valid()
+poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp") %>% st_make_valid()
+#poly <- st_read("Data/Spatial/BC_WA_Merged_Polygon.shp") %>% st_make_valid()
 
 #Check that your polygon is valid
 st_is_valid(poly)
@@ -77,30 +77,35 @@ st_is_valid(poly)
 print(names(poly))
 
 #Prompt user to select polygon ID and area fields
-polygon_id_field <- "name" #Enter the field name for polygon ID (e.g., 'WatershedID')
-area_field <- "" #Enter the field name for area (or leave blank if none)
+polygon_id_field <- "Name" #Enter the field name for polygon ID (e.g., 'WatershedID')
+area_field <- "" #Enter the field name for area (or leave blank if none or you desire equal wieghts)
 
 #Rename fields to 'Name' and 'Area'. If polygon area is missing, this will be created and assigned to 1. Analytically, this means the "Study Area" trend will be equally weighted across all polygons. 
 poly <- poly %>%
   rename(Name = !!polygon_id_field) %>%
   mutate(Area = if (area_field != "") .data[[area_field]] else 1)
 
-#Spatially filter the point to those that are within each polygon
+#Spatially filter the polygon to those that have points
 xy <- st_transform(xy, st_crs(poly))
 Grid <- poly %>% st_filter(xy, .predicate = st_intersects)
 loc.xy <- st_join(Grid, xy)
 
+#Spatially filter the point to those that are only contained within the polygon
+points <- st_filter(xy, Grid, .predicate = st_within)
+
+# Clip the Grid polygon to the map layer
+Grid_clipped <- st_intersection(Grid, map)
+
 #Visualize
 plot <- ggplot() +
-  geom_sf(data = Grid, aes(fill = Name), color = "black") +
-  geom_sf(data = poly, size = 0.2, fill = NA) +
-  geom_sf(data = xy, color = "black", size = 1) +
+  geom_sf(data = Grid_clipped, aes(fill = Name), color = "black") +
+  geom_sf(data = points, color = "black", size = 1) +
   theme_minimal()
 
 print(plot)
 
 ggsave(
-  filename = file.path(plot_dir, "iCAR_Spatial_Plot.jpeg"),
+  filename = file.path(plot.dir, "iCAR_Spatial_Plot.jpeg"),
   plot = plot,
   width = 8,
   height = 6,
@@ -156,7 +161,7 @@ diet<-unique(sp.data$Diet)
 family<-unique(sp.data$family_name)
 #view(family)
 
-guild <- "Yes"
+guild <- "No"
 type <-"family"
 
 ```
@@ -207,7 +212,7 @@ You are ready to start your analysis! The analysis will write results to the fil
 
 #Give your analytically output file a unique name (e.g., BCCWS_Species, SalishSea_migration, Watershed_Species), 
 
-name<-"Watershed_Family"
+name<-"Watershed_Diet"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 
@@ -227,10 +232,8 @@ The analysis calculates trends using both the end point method and a slope throu
 
 ```{r}
 
-trend <- "Endpoint"
-
 #Graph your outputs
-graph_results(model, trend, name = "Watershed_Family")
+graph_results(model, name)
 
 
 ```

@@ -69,9 +69,8 @@ run_analysis <- function(model = c("SPDE", "iCAR")) {
   message("Analysis for '", model, "'model has been run. Check Output folder for results.")
 }
 
-  graph_results <- function(model = c("SPDE", "iCAR"), trend = c("Endpoint", "Slope"), name) {
+  graph_results <- function(model = c("SPDE", "iCAR"), name) {
     model <- match.arg(model)
-    trend <- match.arg(trend)
     
     # Make 'name' available to sourced scripts
     assign("name", name, envir = knitr::knit_global())

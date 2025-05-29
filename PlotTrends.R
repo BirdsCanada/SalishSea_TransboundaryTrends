@@ -4,7 +4,7 @@ sp.tax<-sp.tax %>% dplyr::select(species_id, sort_order, english_name)
 #read indices and trends for a specific site
 
 indices<-read.csv(paste(out.dir, name, "_AnnualIndices_iCAR.csv", sep=""))
-all.trends<-read.csv(paste(out.dir, name, "_TrendsEndPoint_iCAR", model, ".csv", sep=""))
+all.trends<-read.csv(paste(out.dir, name, "_TrendsEndPoint_iCAR.csv", sep=""))
 
 ##Prepare trends for plotting
 #Remove any row with all NA values across all columns
@@ -26,7 +26,10 @@ index <- indices %>%
 
 plot.dat <- NULL
 plot.dat <- full_join(index, ed.trnd, by = c("area_code", "species_code"), relationship = "many-to-many")
-#plot.dat <- plot.dat %>% filter(area_code %in% c("SalishSea", "PSSS", "BCCWS"))
+
+if(name == "SalishSea_Species"){
+  plot.dat$area_code[plot.dat$area_code == "Full Study Area"] <- "Salish Sea"
+}
 
 title <- NULL
 title <- plot.dat %>%
@@ -67,7 +70,10 @@ for(k in 1:num_batches) {
     dat_sub <- subset(plot.dat, species %in% current_sp_trnd)
     
     if(nrow(dat_sub) > 0) {
-
+      
+      dat_sub <- dat_sub %>%
+        filter(index > 0, lower_ci > 0, upper_ci > 0, LOESS_index > 0)
+      
       current_plot <- ggplot(dat_sub, 
                              aes(x = as.numeric(year), y = index, colour = area_code)) +
         facet_wrap(~ full_title, ncol = 2, scales = "free_y", as.table = TRUE) +
@@ -77,9 +83,9 @@ for(k in 1:num_batches) {
         scale_color_grey(start = 0, end = 0.8, name = "Region") +
         scale_y_continuous(trans = "log10", expand = expansion(mult = c(0.1, 0.1))) +
         #scale_y_continuous() +
-        #xlab("Year") +
+        xlab("Year") +
         ylab("Annual Index (log scale)") +
-        ylab("Annual Index") +
+        #ylab("Annual Index") +
         theme_classic() +
         theme(
           axis.text.x = element_text(angle = 90, hjust = 1, color = "black"), # Vertical, black
@@ -94,8 +100,6 @@ for(k in 1:num_batches) {
     }
   }
 }
-
-
 
 while (!is.null(dev.list())) dev.off()
 
