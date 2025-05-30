@@ -1,6 +1,6 @@
 #Analysis scripts
 
-if(length(species.list) == 1){
+if(species.list == "All"){
   sp.list<-unique(sp.data$CommonName)
 }else{
   sp.list<-species.list

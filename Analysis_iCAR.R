@@ -1,6 +1,6 @@
 #Analysis iCAR
 
-if(length(species.list) == 1){
+if(species.list == "All"){
   sp.list<-unique(sp.data$CommonName)
 }else{
   sp.list<-species.list
@@ -257,6 +257,7 @@ for(i in 1:length(sp.list)){
         dpi = 150
       )
       
+      print(d)
   
       ##Remove polygons with no survey sites
       cells_with_counts <- unique(dat$alpha_i[which(!is.na(dat$ObservationCount))]) 
@@ -281,13 +282,19 @@ for(i in 1:length(sp.list)){
         tmp1[[paste0("V", h+1)]] <- pred
       }
     
-      #will want to adjust V to match the posterior sample size   
-      tmp1<-tmp1 %>% group_by(wyear, alpha_i) %>% summarise_all(mean, na.rm=TRUE)
-      tmp1<-tmp1 %>% rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
-                                          lower_ci=quantile(c_across(starts_with("V")), 0.025), 
-                                          upper_ci=quantile(c_across(starts_with("V")), 0.975), 
-                                          stdev=sd(c_across(starts_with("V"))), 
-                                          stderr = stdev / sqrt(nsamples))  
+      #will want to adjust V to match the posterior sample size and calculate statistics  
+      tmp1 <- tmp1 %>%
+        pivot_longer(cols = starts_with("V"), names_to = "sim", values_to = "value") %>%
+        group_by(wyear, alpha_i) %>%
+        summarise(
+          index = median(value, na.rm = TRUE),
+          lower_ci = quantile(value, 0.025, na.rm = TRUE),
+          upper_ci = quantile(value, 0.975, na.rm = TRUE),
+          stdev = sd(value, na.rm = TRUE),
+          stderr = stdev / sqrt(n()),
+          .groups = 'drop'
+        )
+      
       
       #link back this the site name using the grid_key
       grid3<-grid %>% st_drop_geometry() %>% 
@@ -743,6 +750,125 @@ for(i in 1:length(sp.list)){
                   quote = FALSE, 
                   sep = ",", 
                   col.names = FALSE)  
+      
+      
+      ###Slope Full Study Area###
+      
+      #Slope function (delete redundant to above)
+      slope_fun <- function(log_index, wyear) {
+        if(length(log_index) != length(wyear)) stop("Length mismatch between log_index and wyear")
+        coef(lm(log_index ~ wyear))[2]
+      }
+      
+      # Pivot to long format for easier grouping
+      long_df <- area_weighted_indices %>%
+        pivot_longer(
+          cols = starts_with("V"),
+          names_to = "sample",
+          values_to = "idx"
+        )
+      
+      # Take log of the index
+      long_df <- long_df %>%
+        mutate(log_index = log(idx))
+      
+      # Calculate slopes for each SurveyAreaIdentifier and each posterior sample
+      slopes_df <- long_df %>%
+        group_by(alpha_i, sample) %>%
+        arrange(wyear, .by_group = TRUE) %>%
+        summarise(slope = slope_fun(log_index, wyear), .groups = "drop")
+      
+      # Convert slopes to percent annual trend
+      slopes_df <- slopes_df %>%
+        mutate(percent_trend = (exp(slope) - 1) * 100)
+      
+      trend_summary <- slopes_df %>%
+        group_by(alpha_i) %>%
+        summarise(
+          trnd = median(percent_trend),
+          lower_ci = quantile(percent_trend, 0.025),
+          upper_ci = quantile(percent_trend, 0.975), 
+          sd = sd(percent_trend, na.rm=TRUE), 
+          stderr = sd / sqrt(nsamples)
+        ) %>%
+        mutate(
+          index_type = "Slope Trend", 
+          Width_of_Credible_Interval = upper_ci - lower_ci,
+          precision_cat = case_when(
+            Width_of_Credible_Interval < 3.5 ~ "High",
+            Width_of_Credible_Interval >= 3.5 & Width_of_Credible_Interval <= 6.7 ~ "Medium",
+            TRUE ~ "Low"
+          ),
+          percent_change = ((1 + trnd/100)^(Y2 - Y1) - 1) * 100
+        )%>%
+        left_join(grid3, by = "alpha_i")
+      
+      #write output to table
+      trend.out<-NULL
+      trend.out <- trend_summary %>%
+        mutate(model_type="ALPHA SPATIAL iCAR", 
+               model_family = fam,
+               years = paste(Y1, "-", Y2, sep = ""),
+               year_start=Y1, 
+               year_end = Y2,
+               period ="all years",
+               season = "winter",
+               results_code = "BCCWS/PSSS",
+               version= Sys.Date(), 
+               species_code = sp.code,
+               species_id=sp.id, 
+               species_name=species_name,
+               species_sci_name=species_sci_name,
+               model_fit = "", 	
+               percent_change_low ="", 
+               percent_change_high = "",
+               prob_decrease_0 = "",
+               prob_decrease_25 = "",
+               prob_decrease_30 = "",
+               prob_decrease_50 = "",
+               prob_increase_0 = "",
+               prob_increase_33 = "",	
+               prob_increase_100 = "",
+               confidence = "",
+               precision_num = "",
+               suitability="",
+               coverage_num = "",
+               coverage_cat = "",
+               goal = "",
+               goal_lower = "",
+               sample_size_units="Number of Sites",
+               sample_total = "",
+               subtitle = "",
+               pval = "",
+               pval_str = "",
+               post_prob = "",
+               trnd_order = "",
+               dq = "",
+               prob_LD = "",
+               prob_MD = "",
+               prob_LC = "",
+               prob_MI = "",
+               prob_LI = "",
+               quantile_050 = "",
+               quantile_165 = "",
+               quantile_835 = "",
+               quantile_950 = "",
+               trend_id = "",
+               upload_dt = "")
+      
+      trend.out<-left_join(trend.out, sample_size, by="alpha_i")
+      
+      write.trend<-trend.out %>% dplyr::select(results_code,	version,	area_code,	season,	period, species_code,	species_id,	years,year_start,	year_end,	trnd,	lower_ci, upper_ci, index_type, stderr,	model_type,	model_fit,	percent_change,	percent_change_low,	percent_change_high,	prob_decrease_0,	prob_decrease_25,	prob_decrease_30,	prob_decrease_50,	prob_increase_0,	prob_increase_33,	prob_increase_100, suitability, precision_num,	precision_cat,	coverage_num,	coverage_cat,	sample_size, sample_size_units, prob_LD, prob_MD, prob_LC, prob_MI, prob_LI)
+      
+      write.table(write.trend, 
+                  file = paste(out.dir, name, "_TrendsSlope_iCAR.csv", sep = ""), 
+                  row.names = FALSE, 
+                  append = TRUE, 
+                  quote = FALSE, 
+                  sep = ",", 
+                  col.names = FALSE)  
+      
+      
       
       
       } #end min data

@@ -55,9 +55,12 @@ If doing an SPDE model, you may define your `area` as "SalishSea", "BCCWS", or "
 
 ```{r}
 
+if(model == "SPDE"){
 area <- "SalishSea"
 #area <- "BCCWS"
 #area <- "PSSS"
+}
+
 ```
 
 If doing an iCAR model, upload the desired spatial polygon for the analysis. We use "Watersheds in the Salish Sea Bioregion" layer from the [Salish Sea Atlas Data](https://salish-sea-atlas-data-wwu.hub.arcgis.com/) as an example.
@@ -93,12 +96,9 @@ loc.xy <- st_join(Grid, xy)
 #Spatially filter the point to those that are only contained within the polygon
 points <- st_filter(xy, Grid, .predicate = st_within)
 
-# Clip the Grid polygon to the map layer
-Grid_clipped <- st_intersection(Grid, map)
-
 #Visualize
 plot <- ggplot() +
-  geom_sf(data = Grid_clipped, aes(fill = Name), color = "black") +
+  geom_sf(data = Grid, aes(fill = Name), color = "black") +
   geom_sf(data = points, color = "black", size = 1) +
   theme_minimal()
 
@@ -137,7 +137,7 @@ species<-unique(sp.data$CommonName)
 #view(species)
 
 #Create a list of species using all available species in the dataset.
-species.list<-"ALL"
+species.list<-"All"
 
 #Or you can manually select species.
 #species.list <- c("American Wigeon", "Common Loon", "Large Gull") 
@@ -147,7 +147,7 @@ species.list<-"ALL"
 
 For a guild-specific analysis, change `guild` to "Yes" and specify the `type` as either "migration", "diet", or "family". This will override the species list above.
 
-*You do not need to run this code chunk if doing a species-specific analysis. Default guild is set to "No".*
+*You do not need to run this code chunk if doing a species-specific analysis. Default guild is set to "No" in the setup script.*
 
 ```{r}
 
@@ -161,7 +161,7 @@ diet<-unique(sp.data$Diet)
 family<-unique(sp.data$family_name)
 #view(family)
 
-guild <- "No"
+guild <- "Yes"
 type <-"family"
 
 ```
@@ -182,7 +182,7 @@ nsites <- 10 #Detected at > 10 survey sites
 
 ### 3.1.4 Model Specifications
 
-Select the distributional family, and set random and spatial priors, or retain the defaults.
+Select the distributional family, and set random and spatial priors, or retain the defaults. These priors were selected based on model assessments for the full study area. 
 
 ```{r}
 
@@ -210,9 +210,9 @@ You are ready to start your analysis! The analysis will write results to the fil
 
 ```{r}
 
-#Give your analytically output file a unique name (e.g., BCCWS_Species, SalishSea_migration, Watershed_Species), 
+#Give your analytically output file a unique name (e.g., BCCWS_Species, SalishSea_Migration, Watershed_Species), 
 
-name<-"Watershed_Diet"
+name<-"SalishSea_Species"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 
