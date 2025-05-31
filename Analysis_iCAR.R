@@ -277,25 +277,7 @@ for(i in 1:length(sp.list)){
       post.sample1<-inla.posterior.sample(nsamples, M2)
       
       tmp0<-NULL
-      # tmp0 <- dat %>% dplyr::select(wyear, alpha_i) %>% st_drop_geometry() 
-      # 
-      # #for each sample in the posterior we want to join the predicted to tmp so that the predictions line up with year and we can get the mean count by year
-      # for (h in 1:nsamples){
-      #   pred <- exp(post.sample1[[h]]$latent[1:nrow(dat)])
-      #   tmp0[[paste0("V", h+1)]] <- pred
-      # }
-      # 
-      # #will want to adjust V to match the posterior sample size and calculate statistics  
-      # 
-      #   tmp1<-tmp0 %>% group_by(wyear, alpha_i) %>% summarise_all(median, na.rm=TRUE) %>%
-      #   rowwise() %>% mutate(index = median(c_across(starts_with("V"))),
-      #                        lower_ci=quantile(c_across(starts_with("V")), 0.025),
-      #                        upper_ci=quantile(c_across(starts_with("V")), 0.975),
-      #                        stdev=sd(c_across(starts_with("V"))),
-      #                        stderr = stdev / sqrt(nsamples)) 
-
-
-            calculate_indices <- function(sample) {
+              calculate_indices <- function(sample) {
               effects <- exp(sample$latent[1:nrow(dat)])  # Direct latent field access
               aggregate(effects ~ alpha_i + wyear, data = dat, FUN = mean)
             }
@@ -531,63 +513,7 @@ for(i in 1:length(sp.list)){
                 )) %>% left_join(grid3, by = "alpha_i")
          
        
-      # #Slope function
-      # # Improved slope function with error handling
-      # slope_fun <- function(log_index, wyear) {
-      #   if(length(unique(wyear)) < 2) return(NA)  # Need at least 2 years
-      #   tryCatch(
-      #     coef(lm(log_index ~ wyear))[2],
-      #     error = function(e) NA
-      #   )
-      # }
-      # 
-      #  df_trends2 <- tmp0 %>%
-      #    # Filter to target years first
-      #    filter(wyear %in% wy) %>%
-      #    # Process simulations
-      #    pivot_longer(
-      #      cols = starts_with("V"),
-      #      names_to = "sample",
-      #      values_to = "idx"
-      #    ) %>%
-      #    # Calculate log index
-      #    mutate(log_index = log(idx)) %>%
-      #    # Group by unique combinations
-      #    group_by(alpha_i, sample) %>%
-      #    arrange(wyear, .by_group = TRUE) %>%
-      #    # Filter groups with sufficient data
-      #    filter(n() >= 2) %>%  # Require at least 2 data points
-      #    summarise(
-      #      slope = slope_fun(log_index, wyear),
-      #      .groups = "drop"
-      #    ) %>%
-      #    # Convert to percentage trend
-      #    mutate(percent_trend = (exp(slope) - 1) * 100) %>%
-      #    # Aggregate results
-      #    group_by(alpha_i) %>%
-      #    summarise(
-      #      trnd = median(percent_trend, na.rm = TRUE),
-      #      lower_ci = quantile(percent_trend, 0.025, na.rm = TRUE),
-      #      upper_ci = quantile(percent_trend, 0.975, na.rm = TRUE),
-      #      sd = sd(percent_trend, na.rm = TRUE),
-      #      stderr = sd / sqrt(n()),  # Use actual sample count
-      #      .groups = "drop"
-      #    ) %>%
-      #    # Add derived metrics
-      #    mutate(
-      #      index_type = "Slope Trend",
-      #      Width_of_Credible_Interval = upper_ci - lower_ci,
-      #      precision_cat = case_when(
-      #        Width_of_Credible_Interval < 3.5 ~ "High",
-      #        between(Width_of_Credible_Interval, 3.5, 6.7) ~ "Medium",
-      #        TRUE ~ "Low"
-      #      ),
-      #      percent_change = ((1 + trnd/100)^(Y2 - Y1) - 1) * 100
-      #    ) %>%
-      #    left_join(grid3, by = "alpha_i")
-      #  
-      #   
-     
+      
       #write output to table
       trend.out<-NULL
       trend.out <- slope_summary %>%
@@ -687,46 +613,6 @@ for(i in 1:length(sp.list)){
           .groups = "drop"
         )
       
-      
-      # # First ensure unique areas per alpha_i
-      # grid_unique <- grid %>%
-      #   group_by(alpha_i) %>%
-      #   summarise(Area = sum(Area), .groups = "drop")
-      # 
-      # # Join with original data
-      # tmp2<-NULL
-      # tmp2 <- left_join(tmp0, grid_unique, by = "alpha_i")
-      # 
-      # # Calculate area-weighted indices PER SIMULATION
-      # area_weighted_indices <- tmp2 %>%
-      #   pivot_longer(
-      #     cols = starts_with("V"),
-      #     names_to = "simulation",
-      #     values_to = "index"
-      #   ) %>%
-      #   group_by(wyear, simulation) %>%
-      #   summarise(
-      #     weighted_index = sum(index * Area) / sum(Area),
-      #     .groups = "drop"
-      #   ) %>%
-      #   pivot_wider(
-      #     names_from = simulation,
-      #     values_from = weighted_index
-      #   )
-      # 
-      # # Aggregate across simulations
-      # tmp2_area <- area_weighted_indices %>%
-      #   rowwise() %>%
-      #   mutate(
-      #     index = median(c_across(starts_with("V"))),
-      #     lower_ci = quantile(c_across(starts_with("V")), 0.025),
-      #     upper_ci = quantile(c_across(starts_with("V")), 0.975),
-      #     stdev = sd(c_across(starts_with("V"))),
-      #     stderr = stdev / sqrt(nsamples)
-      #   ) %>%
-      #   select(-starts_with("V"))
-      
-    
       #Assign data to output table 
       indices.csv<-NULL 
       indices.csv<-tmp2_area %>% dplyr::select(wyear, index, lower_ci, upper_ci, stdev, stderr) %>% mutate(
@@ -821,42 +707,7 @@ for(i in 1:length(sp.list)){
             between(Width_of_Credible_Interval, 3.5, 6.7) ~ "Medium",
             TRUE ~ "Low"
           ))
-      
-      
-      # # Calculate endpoint trends
-      # endpoint_trends <- area_weighted_indices %>%
-      #   filter(wyear %in% c(Y1, Y2)) %>%
-      #   pivot_longer(
-      #     cols = starts_with("V"),
-      #     names_to = "simulation",
-      #     values_to = "index"
-      #   ) %>%
-      #   pivot_wider(
-      #     id_cols = simulation,
-      #     names_from = wyear,
-      #     values_from = index
-      #   ) %>%
-      #   mutate(
-      #     trend = 100 * ((.[[as.character(Y2)]] / .[[as.character(Y1)]])^(1/(Y2-Y1)) - 1)
-      #   ) %>%
-      #   summarise(
-      #     trnd = median(trend, na.rm = TRUE),
-      #     lower_ci = quantile(trend, 0.025, na.rm = TRUE),
-      #     upper_ci = quantile(trend, 0.975, na.rm = TRUE),
-      #     stdev = sd(trend, na.rm = TRUE),
-      #     stderr = stdev / sqrt(n()),
-      #     .groups = "drop"
-      #   ) %>%
-      #   mutate(
-      #     index_type = "Endpoint Trend",
-      #     Width_of_Credible_Interval = upper_ci - lower_ci,
-      #     percent_change = ((1 + trnd/100)^(Y2-Y1) - 1) * 100, 
-      #     precision_cat = case_when(
-      #       Width_of_Credible_Interval < 3.5 ~ "High",
-      #       between(Width_of_Credible_Interval, 3.5, 6.7) ~ "Medium",
-      #       TRUE ~ "Low"
-      #   ))
-      
+    
       sample_size_all<-sum(sample_size$sample_size)
       
       #write output to table
@@ -964,41 +815,6 @@ for(i in 1:length(sp.list)){
             between(Width_of_Credible_Interval, 3.5, 6.7) ~ "Medium",
             TRUE ~ "Low"))
       
-      # ###Slope Full Study Area###
-      # slope_trends <- area_weighted_indices %>%
-      #   pivot_longer(
-      #     cols = starts_with("V"),
-      #     names_to = "simulation",
-      #     values_to = "index"
-      #   ) %>%
-      #   mutate(log_index = log(index)) %>%
-      #   group_by(simulation) %>%
-      #   arrange(wyear, .by_group = TRUE) %>%
-      #   filter(n() >= 2) %>%  # Ensure at least 2 years per simulation
-      #   summarise(
-      #     slope = slope_fun(log_index, wyear),
-      #     .groups = "drop"
-      #   ) %>%
-      #   mutate(percent_trend = (exp(slope) - 1) * 100) %>%
-      #   summarise(
-      #     trnd = median(percent_trend, na.rm = TRUE),
-      #     lower_ci = quantile(percent_trend, 0.025, na.rm = TRUE),
-      #     upper_ci = quantile(percent_trend, 0.975, na.rm = TRUE),
-      #     stdev = sd(percent_trend, na.rm = TRUE),
-      #     stderr = stdev / sqrt(n()),
-      #     .groups = "drop"
-      #   ) %>%
-      #   mutate(
-      #     index_type = "Slope Trend",
-      #     area_code="Full Study Area",
-      #     Width_of_Credible_Interval = upper_ci - lower_ci,
-      #     percent_change = ((1 + trnd/100)^(Y2 - Y1) - 1) * 100, precision_cat = case_when(
-      #       Width_of_Credible_Interval < 3.5 ~ "High",
-      #       between(Width_of_Credible_Interval, 3.5, 6.7) ~ "Medium",
-      #       TRUE ~ "Low")
-      #   ) 
-      
-      
       #write output to table
       trend.out<-NULL
       trend.out <- slope_summary2 %>%
@@ -1064,10 +880,8 @@ for(i in 1:length(sp.list)){
                   quote = FALSE, 
                   sep = ",", 
                   col.names = FALSE)  
-      
-      
-      
-      
+  
+  
       } #end min data
     } #end if nrows = 0
   } #end sp.list

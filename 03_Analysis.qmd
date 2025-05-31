@@ -70,8 +70,8 @@ A polygon should have counts in all years to ensure that sampling is complete an
 
 ```{r}
 #Load polygon shapefile
-#poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp") %>% st_make_valid()
-poly <- st_read("Data/Spatial/BC_WA_Merged_Polygon.shp") %>% st_make_valid()
+poly <- st_read("Data/Spatial/Salish_Sea_Watersheds.shp") %>% st_make_valid()
+#poly <- st_read("Data/Spatial/BC_WA_Merged_Polygon.shp") %>% st_make_valid()
 
 #Check that your polygon is valid
 st_is_valid(poly)
@@ -80,8 +80,8 @@ st_is_valid(poly)
 print(names(poly))
 
 #Prompt user to select polygon ID and area fields
-polygon_id_field <- "name" #Enter the field name for polygon ID (e.g., 'WatershedID')
-area_field <- "" #Enter the field name for area (or leave blank if none or you desire equal wieghts)
+polygon_id_field <- "Name" #Enter the field name for polygon ID (e.g., 'WatershedID')
+area_field <- "" #Enter the field name for area (or leave blank if none or you desire equal weights)
 
 #Rename fields to 'Name' and 'Area'. If polygon area is missing, this will be created and assigned to 1. Analytically, this means the "Study Area" trend will be equally weighted across all polygons. 
 poly <- poly %>%
@@ -137,8 +137,7 @@ species<-unique(sp.data$CommonName)
 #view(species)
 
 #Create a list of species using all available species in the dataset.
-species.list<-"All"
-species.list<-tolower(species.list) #R is case sensitive, so we want to ensure all lower case. 
+species.list<-tolower("All") #R is case sensitive
 
 #Or you can manually select species. Ensure case and spelling is correct. 
 #species.list <- c("American Wigeon", "Common Loon", "Large Gull") 
@@ -162,7 +161,7 @@ diet<-unique(sp.data$Diet)
 family<-unique(sp.data$family_name)
 #view(family)
 
-guild <- "NO"
+guild <- "yes"
 type <-"migration"
 
 ```
@@ -213,7 +212,7 @@ You are ready to start your analysis! The analysis will write results to the fil
 
 #Give your analytically output file a unique name (e.g., BCCWS_Species, SalishSea_Migration, Watershed_Species), 
 
-name<-"Salish_Species"
+name<-"Watershed_Migration"
 
 #This is the template used for the State of Canada's Birds and is required for upload into NatureCounts
 
@@ -229,7 +228,7 @@ Note that the Dispersion Statistic file in the Output folder should be reviewed 
 
 ## 3.3 Results {#3.3Vis}
 
-The analysis calculates trends using both the end point method and a slope through the calculated annual indices of abundance. When mapping the results, the user needs to select which `trend` outputs they would like to view as either "Endpoint" or "Slope". 
+The analysis calculates trends using both the end point method and a slope through the calculated annual indices of abundance. When mapping the results, the user needs to select which `trend` outputs they would like to view as either "Endpoint" or "Slope". Given these models are
 
 ```{r}
 

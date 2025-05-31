@@ -384,26 +384,48 @@ post.sample1 <-NULL #clear previous
 post.sample1<-inla.posterior.sample(nsamples, M1)
 
 
-# Include SurveyAreaIdentifier in tmp1
-tmp1<- dat %>% 
-  dplyr::select(SurveyAreaIdentifier, wyear) %>% 
-  st_drop_geometry()
+# # Include SurveyAreaIdentifier in tmp1
+# tmp1<- dat %>% 
+#   dplyr::select(SurveyAreaIdentifier, wyear) %>% 
+#   st_drop_geometry()
 
-# Add posterior samples
-for (h in 1:nsamples){
-  pred <- exp(post.sample1[[h]]$latent[1:nrow(dat)])
-  tmp1[[paste0("V", h+1)]] <- pred
+# # Add posterior samples
+# for (h in 1:nsamples){
+#   pred <- exp(post.sample1[[h]]$latent[1:nrow(dat)])
+#   tmp1[[paste0("V", h+1)]] <- pred
+# }
+# 
+# 
+# #will want to adjust V to match the posterior sample size   
+# tmp0<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(median, na.rm=TRUE) %>% 
+#   rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
+#                        lower_ci=quantile(c_across(starts_with("V")), 0.025), 
+#                        upper_ci=quantile(c_across(starts_with("V")), 0.975), 
+#                        stdev=sd(c_across(starts_with("V"))), 
+#                        stderr = stdev / sqrt(nsamples), 
+#                        area_code=SurveyAreaIdentifier)  %>%  select(-starts_with("V")) 
+
+tmp0<-NULL
+calculate_indices <- function(sample) {
+  effects <- exp(sample$latent[1:nrow(dat)])  # Direct latent field access
+  aggregate(effects ~ SurveyAreaIdentifier + wyear, data = dat, FUN = mean)
 }
 
+tmp0 <- bind_rows(
+  lapply(post.sample1, calculate_indices), 
+  .id = "sample"
+)
 
-#will want to adjust V to match the posterior sample size   
-tmp0<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(median, na.rm=TRUE) %>% 
-  rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
-                       lower_ci=quantile(c_across(starts_with("V")), 0.025), 
-                       upper_ci=quantile(c_across(starts_with("V")), 0.975), 
-                       stdev=sd(c_across(starts_with("V"))), 
-                       stderr = stdev / sqrt(nsamples), 
-                       area_code=SurveyAreaIdentifier)  %>%  select(-starts_with("V")) 
+tmp1 <- tmp0 %>%
+  group_by(alpha_i, wyear) %>%
+  summarise(
+    index = mean(effects),
+    stdev = sd(effects),
+    stderr = stdev / sqrt(n()),  # Uses group-wise sample count
+    lower_ci = quantile(effects, 0.025),
+    upper_ci = quantile(effects, 0.975),
+    .groups = 'drop'
+  )
 
 
 #Assign data to output table 
