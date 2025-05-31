@@ -1,8 +1,5 @@
 # Read trend data and clean
 
-#Default trend == Endpoint
-trend<-"Endpoint"
-
 if (trend == "Endpoint") {
   all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsEndPoint_SPDE.csv"))) %>% 
     drop_na(results_code) %>% 
@@ -39,7 +36,7 @@ for(current_sp in species_list3) {
     geom_sf(data = Grid_sp, aes(fill = trnd), size = 2, shape = 21, color = "black") +
     scale_fill_gradient2(
       name = "Annual Trends (%)",
-      low = "blue", mid = "white", high = "red",
+      low = "red", mid = "white", high = "blue",
       midpoint = 0,
       limits = c(-max_abs, max_abs),
       na.value = "grey90"

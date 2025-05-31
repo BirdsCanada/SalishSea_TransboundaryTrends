@@ -18,14 +18,6 @@ spatial.dir <- "Data/Spatial/"
 plot.dir <- "Output/Plots/"
 
 #Load required libraries
-# 
-# install.packages("librarian")
-# install.packages("devtools")
-# install.packages("remotes")
-# remotes::install_github("BirdsCanada/naturecounts")
-# install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE) 
-# devtools::install_github("ropensci/rnaturalearthhires")
-
 librarian::shelf("BirdsCanada/naturecounts", tidyverse, sf, mapview, sdmpredictors,
                  svMisc, terra, geojsonsf, leaflet, HelpersMG, gdalUtilities, ggplot2,
                  exactextractr, readxl, reshape, ggmap, gridExtra, ggspatial, prettymapr, 
@@ -69,23 +61,27 @@ run_analysis <- function(model = c("SPDE", "iCAR")) {
   message("Analysis for '", model, "'model has been run. Check Output folder for results.")
 }
 
-  graph_results <- function(model = c("SPDE", "iCAR"), name) {
-    model <- match.arg(model)
-    
-    # Make 'name' available to sourced scripts
-    assign("name", name, envir = knitr::knit_global())
-    
-  
-  # Source the appropriate analysis script
-  if (model == "SPDE") {
-    source("Graph_SPDE.R", local = knitr::knit_global())
-  } else if (model == "iCAR") {
-    source("Graph_iCAR.R", local = knitr::knit_global())
-  }
-  
-    message("Graph results for '", model, "' model (", name, ") have been run. Check Output/Plot folder for results.")
-}
 
+    graph_results <- function(model = c("SPDE", "iCAR"), name, trend = c("endpoint", "slope")) {
+      model <- match.arg(model)
+      trend <- tolower(trend)         # Convert user input to lowercase
+      trend <- match.arg(trend)       # Now safely match
+      
+      # Make 'name' and 'trend' available to sourced scripts
+      assign("name", name, envir = knitr::knit_global())
+      assign("trend", trend, envir = knitr::knit_global())
+      
+      
+      # Source the appropriate analysis script, suppressing warnings
+      if (model == "SPDE") {
+        suppressWarnings(source("Graph_SPDE.R", local = knitr::knit_global()))
+      } else if (model == "iCAR") {
+        suppressWarnings(source("Graph_iCAR.R", local = knitr::knit_global()))
+      }
+      
+      message("Graph results for '", model, "' model (", name, ") have been run. Check Output/Plot folder for results.")
+    }
+    
 
 compute_dispersion_SPDE <- function(M1, Stack, family) {
   # Extract indices of estimation points from the stack
@@ -147,29 +143,6 @@ calculate_dispersion_iCAR <- function(inla_model, observed) {
 }
 
 
-# #create plot function
-# make_plot_field <- function(data_stk, scale_label) {
-#   ggplot(map) +
-#     geom_sf(fill = NA) +
-#     coord_sf(datum = NA) +
-#     geom_spatraster(data = data_stk) +
-#     labs(x = "", y = "") +
-#     scale_fill_distiller(scale_label,
-#                          palette = "Spectral",
-#                          na.value = "transparent") +
-#     theme_bw() +
-#     geom_sf(fill = NA)
-# }
-# make_plot_site <- function(data, scale_label) {
-#   ggplot(map) +
-#     geom_sf() +
-#     coord_sf(datum = NA) +
-#     geom_sf(data = data, size = 1, mapping = aes(colour = value)) +
-#     scale_colour_distiller(scale_label, palette = "Spectral") +
-#     labs(x = "", y = "") +
-#     theme_bw() +
-#     geom_sf(fill = NA)
-# }
 
 # Function to calculate duration in hours
 calculate_duration <- function(start, end) {
@@ -187,67 +160,5 @@ calculate_duration <- function(start, end) {
 }
 
 #Guild default is "No" unless otherwise changed in the setup script
-guild<-"No"
+guild<-"no"
 
-##This is the Polygon of the Salish Sea
-##Need to download and save the Bathymetry TIFF file from here:https://salish-sea-atlas-data-wwu.hub.arcgis.com/
-
-# bathy <- rast("Data/Spatial/SS_Bathymetry.tif")
-# plot(bathy)
-# 
-# water_mask <- classify(bathy, cbind(-Inf, 0, 1), others = NA)
-# 
-# # Convert to polygon and clean
-# water_poly <- as.polygons(water_mask, dissolve = TRUE) |> 
-#   st_as_sf() |> 
-#   st_simplify(dTolerance = 100)  # Simplify with 100m tolerance
-# 
-# plot(water_mask)
-# 
-# # Suppose your polygon is called 'poly'
-# # Ensure your CRS uses meters (projected, not geographic/longlat)
-# st_crs(water_poly) # Check CRS
-# 
-# # If necessary, transform to a projected CRS (example: UTM zone 10N)
-# poly_proj <- st_transform(water_poly, 32610) # EPSG:32610 is UTM 10N
-# 
-# # Create a 5km buffer
-# poly_buffer <- st_buffer(poly_proj, dist = 5000)
-# 
-# # Plot to check
-# plot(st_geometry(poly_proj), col = 'lightblue')
-# plot(st_geometry(poly_buffer), border = 'red', add = TRUE)
-# 
-# st_write(water_buffer, "Data/Spatial/Salish_Sea_Water_Polygon.shp")
-# 
-# canada <- ne_states(country = "canada", returnclass = "sf")
-# BC<- canada[canada$name=="British Columbia",]
-# 
-# us<- ne_states(country = "united states of america", returnclass = "sf")
-# WA<- us[us$name=="Washington",]
-# 
-# # Ensure both layers use the same CRS
-# if (st_crs(map) != st_crs(BC)) {
-#   map <- st_transform(map, st_crs(BC))
-# }
-# 
-# # Clip the water polygon to BC
-# map_BC <- st_intersection(map, BC)
-# st_write(map_BC, "Data/Spatial/BC_Water_Polygon.shp", layer_options = "ENCODING=UTF-8")
-# 
-# # Ensure both layers use the same CRS
-# if (st_crs(map) != st_crs(WA)) {
-#   map <- st_transform(map, st_crs(WA))
-# }
-# 
-# # Clip the water polygon to BC
-# map_WA <- st_intersection(map, WA)
-# st_write(map_WA, "Data/Spatial/WA_Water_Polygon.shp", layer_options = "ENCODING=UTF-8")
-# 
-# # Combine the two polygons into one sf object
-# bc_wa <- rbind(BC, WA)
-# 
-# 
-# st_write(bc_wa, "Data/Spatial/BC_WA_Merged_Polygon.shp", layer_options = "ENCODING=UTF-8")
-# 
-# plot(bc_wa)

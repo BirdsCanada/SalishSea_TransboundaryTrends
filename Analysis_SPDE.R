@@ -1,10 +1,12 @@
 #Analysis scripts
 
-if(species.list == "All"){
+if(species.list == "all"){
   sp.list<-unique(sp.data$CommonName)
 }else{
   sp.list<-species.list
 }
+
+area<- toupper(area)
 
 if(area=="BCCWS"){
   sp.dat<-sp.data %>% filter(ProjectCode=="BCCWS")
@@ -20,7 +22,7 @@ if(area=="PSSS"){
 } 
 
 #Specify the spatial extent of the analysis
-if(area=="SalishSea"){
+if(area=="SALISHSEA"){
    sp.dat<-sp.data 
   event<-events
 }
@@ -31,8 +33,11 @@ map<- st_read("Data/Spatial/Salish_Sea_Water_Polygon.shp")
 sp.dat<-sp.dat %>% filter(wyear != 2020)
 event<-event %>% filter(wyear != 2020)
 
+type <- tolower(type)
+guild <- tolower(guild)
+
 #If guild is set to "Yes" this will override the species list above.   
-if(guild=="Yes"){
+if(guild=="yes"){
   if(type == "migration"){
   sp.list<-unique(sp.data$Migration)
   colnames(sp.dat)[colnames(sp.dat) == "Migration"] <- "Guild"
@@ -55,7 +60,7 @@ if(guild=="Yes"){
    
    print(paste("Currently analyzing species ", i, "/", sp.list[i], sep = "")) 
    
-    if(guild =="Yes"){
+    if(guild =="yes"){
     dat <- sp.dat %>% filter(Guild==sp.list[i])
     dat<-dat %>% distinct(ProjectCode, SurveyAreaIdentifier, wyear, YearCollected, wmonth, MonthCollected, DayCollected, .keep_all = TRUE)
     sp.code<-sp.list[i]
@@ -201,7 +206,7 @@ if(min.data==TRUE){
 #create the datframe of covariates
 N<-nrow(dat)
 
-    if(guild=="Yes"){
+    if(guild=="yes"){
       
       dat$sp_idx[is.na(dat$sp_idx)] <- 999 #replace NA which are zero counts with generic sp_idx
       
@@ -278,7 +283,7 @@ N<-nrow(dat)
        )
     )
     
-    if(guild=="Yes"){
+    if(guild=="yes"){
       
       formula.sp<- count ~ -1 + Intercept + 
       f(year_idx, model = "iid", hyper = hyper.iid) +  
@@ -392,7 +397,7 @@ for (h in 1:nsamples){
 
 
 #will want to adjust V to match the posterior sample size   
-tmp0<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(mean, na.rm=TRUE) %>% 
+tmp0<-tmp1 %>% group_by(wyear, SurveyAreaIdentifier) %>% summarise_all(median, na.rm=TRUE) %>% 
   rowwise() %>% mutate(index = median(c_across(starts_with("V"))), 
                        lower_ci=quantile(c_across(starts_with("V")), 0.025), 
                        upper_ci=quantile(c_across(starts_with("V")), 0.975), 

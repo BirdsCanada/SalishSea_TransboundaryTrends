@@ -1,19 +1,33 @@
+guild <- tolower(guild)
+trend <- tolower(trend)
+
 sp.tax<-meta_species_taxonomy()
 sp.tax<-sp.tax %>% dplyr::select(species_id, sort_order, english_name)
 
 #read indices and trends for a specific site
 
+indices<-NULL
 indices<-read.csv(paste(out.dir, name, "_AnnualIndices_iCAR.csv", sep=""))
-all.trends<-read.csv(paste(out.dir, name, "_TrendsEndPoint_iCAR.csv", sep=""))
+
+all.trend <- NULL
+if (trend == "endpoint") {
+  all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsEndPoint_iCAR.csv"))) 
+    } else if (trend == "slope") {
+  all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsSlope_iCAR.csv"))) 
+    }
 
 ##Prepare trends for plotting
 #Remove any row with all NA values across all columns
 all.trends <- all.trends[rowSums(is.na(all.trends)) < ncol(all.trends), ]
-all.trends<-all.trends %>% dplyr::select(area_code, period, species_code, species_id, years, trnd, lower_ci, upper_ci, index_type, percent_change) %>% filter(period=="all years")
+all.trends<-all.trends %>% dplyr::select(area_code, species_code, species_id, years, trnd, lower_ci, upper_ci, index_type, percent_change) 
 
-if(guild == "No"){
+if(guild == "no"){
 all.trends<-left_join(all.trends, sp.tax, by=c("species_id"="species_id"))
 } 
+
+if(guild == "yes"){
+all.trends$english_name<-all.trends$species_code  
+}
 
 ed.trnd <- all.trends %>% 
   mutate(sp.trnd = paste(round( trnd, digits = 2),  " (", round( lower_ci, digits = 2), ", ", round( upper_ci, digits = 2), ")", sep = "")) %>% dplyr::select(-trnd, -upper_ci, -lower_ci)
@@ -26,10 +40,6 @@ index <- indices %>%
 
 plot.dat <- NULL
 plot.dat <- full_join(index, ed.trnd, by = c("area_code", "species_code"), relationship = "many-to-many")
-
-if(name == "SalishSea_Species"){
-  plot.dat$area_code[plot.dat$area_code == "Full Study Area"] <- "Salish Sea"
-}
 
 title <- NULL
 title <- plot.dat %>%
@@ -81,11 +91,11 @@ for(k in 1:num_batches) {
         geom_line(aes(y = LOESS_index), linewidth = 0.8) +
         # Black-and-white friendly color palette
         scale_color_grey(start = 0, end = 0.8, name = "Region") +
-        scale_y_continuous(trans = "log10", expand = expansion(mult = c(0.1, 0.1))) +
-        #scale_y_continuous() +
+        #scale_y_continuous(trans = "log10", expand = expansion(mult = c(0.1, 0.1))) +
+        scale_y_continuous() +
         xlab("Year") +
-        ylab("Annual Index (log scale)") +
-        #ylab("Annual Index") +
+        #ylab("Annual Index (log scale)") +
+        ylab("Annual Index") +
         theme_classic() +
         theme(
           axis.text.x = element_text(angle = 90, hjust = 1, color = "black"), # Vertical, black

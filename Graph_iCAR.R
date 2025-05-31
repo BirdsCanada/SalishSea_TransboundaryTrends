@@ -1,10 +1,17 @@
-#Default trend == Endpoint
-trend<-"Endpoint"
+# Read trend data and clean
 
-# Read and clean iCAR trend data
-all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsEndPoint_iCAR.csv"))) %>%
-  drop_na(results_code) %>%
-  select(area_code, species_code, trnd)
+trend<-tolower(trend)
+
+if (trend == "endpoint") {
+  all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsEndPoint_iCAR.csv"))) %>% 
+    drop_na(results_code) %>% 
+    select(area_code, species_code, trnd)
+} else if (trend == "slope") {
+  all.trends <- read.csv(file.path(out.dir, paste0(name, "_TrendsSlope_iCAR.csv"))) %>% 
+    drop_na(results_code) %>% 
+    select(area_code, species_code, trnd)
+}
+
 
 # Ensure Grid and map are sf objects
 if(!inherits(Grid, "sf")) stop("Grid must be an sf object")
@@ -18,6 +25,7 @@ for(current_sp in species_list3) {
   
   # Join and clip
   Grid_sp <- Grid %>% left_join(species_data, by = c("Name" = "area_code"))
+  Grid_sp<- st_transform(Grid_sp, st_crs(mapCRS))
   Grid_sp_clipped <- sf::st_intersection(Grid_sp, map)
   
   
@@ -31,7 +39,7 @@ for(current_sp in species_list3) {
     geom_sf(data = Grid_sp_clipped, aes(fill = trnd), color = "white", size = 0.1) +
     scale_fill_gradient2(
       name = "Annual Trends (%)",
-      low = "blue", mid = "white", high = "red",
+      low = "red", mid = "white", high = "blue",
       midpoint = 0,
      # limits = c(-max_abs, max_abs),
       na.value = "grey90"
@@ -50,3 +58,6 @@ for(current_sp in species_list3) {
     dpi = 300
   )
 }
+
+
+
