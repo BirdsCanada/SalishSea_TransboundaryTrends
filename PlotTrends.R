@@ -71,9 +71,16 @@ num_batches <- ceiling(length(sp.list2)/6)
 pdf(paste(plot.dir, name, "_IndexPlot_", model, ".pdf", sep=""),
     height = 10, width = 8, paper = "letter")
 
+if(guild=="yes"){
+  nplot<-4
+}else{
+nplot<-6
+}
+
+
 for(k in 1:num_batches) {
-  start_idx <- (k-1)*6 + 1
-  end_idx <- min(k*6, length(sp.list2))
+  start_idx <- (k-1)*nplot + 1
+  end_idx <- min(k*nplot, length(sp.list2))
   
   if(start_idx <= length(sp.list2)) {
     current_sp_trnd <- sp.list2[start_idx:end_idx]
@@ -91,11 +98,21 @@ for(k in 1:num_batches) {
         geom_line(aes(y = LOESS_index), linewidth = 0.8) +
         # Black-and-white friendly color palette
         scale_color_grey(start = 0, end = 0.8, name = "Region") +
+        # scale_y_continuous(
+        #   trans = scales::pseudo_log_trans(base = 10, sigma = 1),
+        #   expand = expansion(mult = c(0.1, 0.1))
+        # ) +
+        
+        scale_y_continuous(
+          trans = scales::pseudo_log_trans(base = 10, sigma = 1),
+          breaks = c(1, 5, 10, 50, 100, 500), # adjust as needed for your data
+          expand = expansion(mult = c(0.1, 0.1))
+        )+
         #scale_y_continuous(trans = "log10", expand = expansion(mult = c(0.1, 0.1))) +
-        scale_y_continuous() +
+        #scale_y_continuous() +
         xlab("Year") +
-        #ylab("Annual Index (log scale)") +
-        ylab("Annual Index") +
+        ylab("Annual Index (pseudo log scale)") +
+        #ylab("Annual Index") +
         theme_classic() +
         theme(
           axis.text.x = element_text(angle = 90, hjust = 1, color = "black"), # Vertical, black
